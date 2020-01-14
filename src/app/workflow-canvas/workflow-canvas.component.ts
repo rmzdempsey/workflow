@@ -9,9 +9,9 @@ export class WorkflowCanvasComponent implements OnInit, AfterViewInit {
 
   constructor() { }
 
-  tasks : Array<Task> = []
+  nodes : Array<WorkflowNode> = []
 
-  selection : Array<Task> = []
+  selection : Array<WorkflowNode> = []
 
   isSelecting: boolean;
   isDragging: boolean;
@@ -19,11 +19,23 @@ export class WorkflowCanvasComponent implements OnInit, AfterViewInit {
   selectionStartY: number;
   
   newTask(){
-    this.tasks.push(new Task(
+    this.nodes.push(new RectWorkflowNode(
       Math.random() * 100,
       Math.random() * 100,
       Math.random() * 100,
       Math.random() * 100,
+    ))
+  }
+
+  newDecision(){
+    
+  }
+
+  newTerminator(){
+    this.nodes.push(new CircleWorkflowNode(
+      Math.random() * 100,
+      Math.random() * 100,
+      Math.random() * 100
     ))
   }
 
@@ -47,10 +59,10 @@ export class WorkflowCanvasComponent implements OnInit, AfterViewInit {
     this.isSelecting = false;
     this.isDragging = false;
 
-    let hit : Task;
-    this.tasks.slice().reverse().forEach(t=>{
-      if( !hit && t.containsPoint(e.offsetX,e.offsetY)){
-        hit = t;
+    let hit : WorkflowNode;
+    this.nodes.slice().reverse().forEach(n=>{
+      if( !hit && n.containsPoint(e.offsetX,e.offsetY)){
+        hit = n;
       }
     })
 
@@ -80,16 +92,16 @@ export class WorkflowCanvasComponent implements OnInit, AfterViewInit {
 
   onPointerMove(e:PointerEvent){
     if( this.isDragging ){
-      this.selection.forEach(t=>{
-        t.x = t.x + e.movementX
-        t.y = t.y + e.movementY
+      this.selection.forEach(n=>{
+        n.x = n.x + e.movementX
+        n.y = n.y + e.movementY
       })
     }
     else if( this.isSelecting ){
-      this.tasks.forEach(t=>{
-        if(this.selection.indexOf(t)==-1){
-          if( t.isInsideRect(this.selectionStartX, this.selectionStartY, e.offsetX,e.offsetY)){
-            this.selection.push(t)
+      this.nodes.forEach(n=>{
+        if(this.selection.indexOf(n)==-1){
+          if( n.isInsideRect(this.selectionStartX, this.selectionStartY, e.offsetX,e.offsetY)){
+            this.selection.push(n)
           }
         }
       })
@@ -97,10 +109,27 @@ export class WorkflowCanvasComponent implements OnInit, AfterViewInit {
   }
 }
 
-export class Task {
-  
-  constructor(public x:number, public y: number, public width: number, public height: number ){
+export abstract class WorkflowNode {
 
+  constructor(public x:number, public y: number ){}
+
+  abstract containsPoint(x:number,y:number):boolean
+  abstract isInsideRect(x0:number,y0:number,x1:number,y1:number):boolean
+
+  orderValues(n0:number,n1:number): Array<number>{
+    if( n0>n1 ){
+      let tmp = n0;
+      n0=n1;
+      n1=tmp;
+    }
+    return [n0,n1]
+  }
+}
+
+export class RectWorkflowNode extends WorkflowNode {
+
+  constructor(x:number, y: number, public width: number, public height: number ){
+    super(x,y)
   }
 
   containsPoint(x:number,y:number):boolean{
@@ -108,18 +137,27 @@ export class Task {
   }
 
   isInsideRect(x0:number,y0:number,x1:number,y1:number):boolean{
-    if( x0>x1 ){
-      let tmp = x0;
-      x0=x1;
-      x1=tmp;
-    }
-    if( y0>y1 ){
-      let tmp = y0;
-      y0=y1;
-      y1=tmp;
-    }
-    return this.x >= x0 && (this.x+this.width)<=x1 && this.y >= y0 && (this.y+this.height)<=y1;
+    let x: Array<number> = this.orderValues(x0,x1)
+    let y: Array<number> = this.orderValues(y0,y1)
+    return this.x >= x[0] && (this.x+this.width)<=x[1] && this.y >= y[0] && (this.y+this.height)<=y[1];
+  }
+}
+
+export class CircleWorkflowNode extends WorkflowNode {
+
+  constructor(x:number, y: number, public radius: number ){
+    super(x,y)
   }
 
+  containsPoint(x:number,y:number):boolean{
+    const dx = this.x - x;
+    const dy = this.y - y;
+    return this.radius >= Math.hypot(dx,dy);
+  }
 
+  isInsideRect(x0:number,y0:number,x1:number,y1:number):boolean{
+    let x: Array<number> = this.orderValues(x0,x1)
+    let y: Array<number> = this.orderValues(y0,y1)
+    return x[0] <= (this.x-this.radius) && x[1] >= (this.x+this.radius) && y[0] <= (this.y-this.radius) && y[1] >= (this.y+this.radius)
+  }
 }

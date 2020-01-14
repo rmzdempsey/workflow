@@ -3,7 +3,7 @@
 </p>
 <svg version="1.1"
      baseProfile="full"
-     width="300" height="200"
+     width="800" height="600"
      xmlns="http://www.w3.org/2000/svg"
     
     (pointerup)="onPointerUp($event)"
@@ -19,8 +19,9 @@
 
   <text x="150" y="125" font-size="60" text-anchor="middle" fill="white">SVG</text> -->
 
-  <svg:g *ngFor="let task of tasks">
-    <svg:g rect-node [task]="task" ></svg:g>
+  <svg:g *ngFor="let node of nodes">
+    <svg:g app-workflow-task [node]="node" *ngIf="node.constructor.name === 'RectWorkflowNode' "></svg:g>
+    <svg:g app-workflow-terminator [node]="node" *ngIf="node.constructor.name === 'CircleWorkflowNode' "></svg:g>
   </svg:g>
   
 

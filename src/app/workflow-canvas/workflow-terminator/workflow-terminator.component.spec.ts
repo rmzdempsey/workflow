@@ -1,20 +1,20 @@
 import { async, ComponentFixture, TestBed } from '@angular/core/testing';
 
-import { NodeComponent } from './node.component';
+import { WorkflowTerminatorComponent } from './workflow-terminator.component';
 
-describe('NodeComponent', () => {
-  let component: NodeComponent;
-  let fixture: ComponentFixture<NodeComponent>;
+describe('WorkflowTerminatorComponent', () => {
+  let component: WorkflowTerminatorComponent;
+  let fixture: ComponentFixture<WorkflowTerminatorComponent>;
 
   beforeEach(async(() => {
     TestBed.configureTestingModule({
-      declarations: [ NodeComponent ]
+      declarations: [ WorkflowTerminatorComponent ]
     })
     .compileComponents();
   }));
 
   beforeEach(() => {
-    fixture = TestBed.createComponent(NodeComponent);
+    fixture = TestBed.createComponent(WorkflowTerminatorComponent);
     component = fixture.componentInstance;
     fixture.detectChanges();
   });
