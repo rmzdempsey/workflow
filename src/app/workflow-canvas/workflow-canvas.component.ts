@@ -12,9 +12,7 @@ export class WorkflowCanvasComponent implements OnInit {
   tasks : Array<Task> = []
 
   selected : Task;
-  selectedOffsetX: number;
-  selectedOffsetY: number;
-
+  
   newTask(){
     this.tasks.push(new Task(
       Math.random() * 100,
@@ -27,34 +25,28 @@ export class WorkflowCanvasComponent implements OnInit {
   ngOnInit() {
   }
 
-  onMouseMove(evt:MouseEvent){
-    if( this.selected && evt.buttons === 1 ){
-      this.selected.x = this.selected.x + evt.movementX
-      this.selected.y = this.selected.y + evt.movementY
-    }
-  }
-
-  onMouseDown(evt:MouseEvent){
+  onPointerDown(e:PointerEvent){
     this.tasks.forEach(t=>{
-      if(t.containsPoint(evt.offsetX,evt.offsetY)){
+      if(t.containsPoint(e.offsetX,e.offsetY)){
+        e.srcElement.setPointerCapture(e.pointerId);
         this.selected = t;
-        this.selectedOffsetX = evt.offsetX - t.x;
-        this.selectedOffsetY = evt.offsetY - t.y;
       }
     })
   }
 
-  onMouseUp(evt:MouseEvent){
-    this.selected = null;
-  }
-
-  onMouseEnter(evt:MouseEvent){
+  onPointerUp(e:PointerEvent){
     if(this.selected){
-      this.selected.x = this.selectedOffsetX + evt.offsetX;
-      this.selected.y = this.selectedOffsetY + evt.offsetY
+      this.selected = null;
+      e.srcElement.releasePointerCapture(e.pointerId);
     }
   }
 
+  onPointerMove(e:PointerEvent){
+    if( this.selected && e.buttons === 1 ){
+      this.selected.x = this.selected.x + e.movementX
+      this.selected.y = this.selected.y + e.movementY
+    }
+  }
 }
 
 export class Task {
