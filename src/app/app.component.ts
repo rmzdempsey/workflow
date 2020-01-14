@@ -1,4 +1,5 @@
-import { Component } from '@angular/core';
+import { Component, ViewChild } from '@angular/core';
+import { WorkflowCanvasComponent } from './workflow-canvas/workflow-canvas.component';
 
 @Component({
   selector: 'app-root',
@@ -6,5 +7,7 @@ import { Component } from '@angular/core';
   styleUrls: ['./app.component.scss']
 })
 export class AppComponent {
-  title = 'workflow';
+  @ViewChild('canvas') canvas : WorkflowCanvasComponent;
 }
+
+
