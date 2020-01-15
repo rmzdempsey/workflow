@@ -28,7 +28,12 @@ export class WorkflowCanvasComponent implements OnInit, AfterViewInit {
   }
 
   newDecision(){
-    
+    this.nodes.push(new DiamondWorkflowNode(
+      100,
+      100,
+      100,
+      100,
+    ))
   }
 
   newTerminator(){
@@ -159,5 +164,48 @@ export class CircleWorkflowNode extends WorkflowNode {
     let x: Array<number> = this.orderValues(x0,x1)
     let y: Array<number> = this.orderValues(y0,y1)
     return x[0] <= (this.x-this.radius) && x[1] >= (this.x+this.radius) && y[0] <= (this.y-this.radius) && y[1] >= (this.y+this.radius)
+  }
+}
+
+export class DiamondWorkflowNode extends WorkflowNode {
+
+  constructor(x:number, y: number, public width: number, public height: number ){
+    super(x,y)
+  }
+
+  containsPoint(x:number,y:number):boolean{
+    let b : boolean = false;
+
+    let m = this.y/this.x;
+
+    let Y = y-this.y
+    let X = x-(this.x-(this.width/2))
+
+    if( Y <= m*X ){
+      X = x-this.x
+      Y = y-(this.y-(this.height/2))
+      if( Y >= m*X ){
+        m = -m;
+        Y = y-this.y
+        X = x-(this.x-(this.width/2))
+        if( Y >= m*X ){
+          X = x-this.x
+          Y = y-(this.y+(this.height/2))
+          if( Y <= m*X ){
+            b = true;
+          }
+        }
+      }
+    }
+
+    return b;
+  }
+
+  isInsideRect(x0:number,y0:number,x1:number,y1:number):boolean{
+    let x: Array<number> = this.orderValues(x0,x1)
+    let y: Array<number> = this.orderValues(y0,y1)
+    let X = this.x-(this.width/2)
+    let Y = this.y-(this.height/2)
+    return X >= x[0] && (X+this.width)<=x[1] && Y >= y[0] && (Y+this.height)<=y[1];
   }
 }

@@ -22,6 +22,7 @@
   <svg:g *ngFor="let node of nodes">
     <svg:g app-workflow-task [node]="node" *ngIf="node.constructor.name === 'RectWorkflowNode' "></svg:g>
     <svg:g app-workflow-terminator [node]="node" *ngIf="node.constructor.name === 'CircleWorkflowNode' "></svg:g>
+    <svg:g app-workflow-decision [node]="node" *ngIf="node.constructor.name === 'DiamondWorkflowNode' "></svg:g>
   </svg:g>
   
 
