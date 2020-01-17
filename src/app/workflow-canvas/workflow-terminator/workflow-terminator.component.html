@@ -4,7 +4,6 @@
   [attr.cy]="node.y" 
   [attr.r]="node.radius" 
   
-  fill="pink" 
-  stroke="black"
+  [attr.class]="node.selected?'is-selected':'not-selected'"
 
   />

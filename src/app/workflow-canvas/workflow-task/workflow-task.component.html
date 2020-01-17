@@ -3,7 +3,6 @@
   [attr.y]="node.y" 
   [attr.width]="node.width" 
   [attr.height]="node.height" 
-  fill="yellow" 
-  stroke="black"
-
+  
+  [attr.class]="node.selected?'is-selected':'not-selected'"
   />
