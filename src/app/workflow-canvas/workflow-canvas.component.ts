@@ -13,6 +13,7 @@ export class WorkflowCanvasComponent implements OnInit, AfterViewInit {
 
   isSelecting: boolean;
   isDragging: boolean;
+  resizingHit: ResizingHit;
   selectionStartX: number;
   selectionStartY: number;
   selectionEndX: number;
@@ -40,7 +41,7 @@ export class WorkflowCanvasComponent implements OnInit, AfterViewInit {
     this.addNode( new CircleWorkflowNode(this,
       100,
       100,
-      50,
+      30,
     ))
   }
 
@@ -69,6 +70,13 @@ export class WorkflowCanvasComponent implements OnInit, AfterViewInit {
   onPointerDown(e:PointerEvent){
     this.isSelecting = false;
     this.isDragging = false;
+    this.resizingHit = null;
+
+    let resizeHits:Array<WorkflowNode> = this.nodes.slice().reverse().filter(n=>n.containsPointResize(e.offsetX,e.offsetY))
+    if(resizeHits.length>0){
+      this.resizingHit = resizeHits[0].containsPointResize(e.offsetX,e.offsetY)
+      return
+    }
 
     let hit : WorkflowNode = this.nodes.slice().reverse().find(n=>n.containsPoint(e.offsetX,e.offsetY))
 
@@ -97,10 +105,14 @@ export class WorkflowCanvasComponent implements OnInit, AfterViewInit {
     }
     this.isDragging = false;
     this.isSelecting = false;
+    this.resizingHit = null;
   }
 
   onPointerMove(e:PointerEvent){
-    if( this.isDragging ){
+    if( this.resizingHit ){
+      this.resizingHit.node.resize(this.resizingHit.direction,e.movementX,e.movementY)
+    }
+    else if( this.isDragging ){
       this.nodes.filter(n=>n.selected)
       .forEach(n=>{
         n.x = n.x + e.movementX
@@ -146,6 +158,20 @@ class Utils {
     }
     return [n0,n1]
   }
+  static cirleContainsPoint(cx:number,cy:number,r:number,x:number,y:number):boolean{
+    const dx = cx - x;
+    const dy = cy - y;
+    return r >= Math.hypot(dx,dy);
+  }
+}
+
+export enum ResizeDirection {
+  NOT_RESIZING="0",
+  NORTH="N", NORTH_EAST="NE", EAST="E", SOUTH_EAST="SE", SOUTH="S", SOUTH_WEST="SW", WEST="W", NORTH_WEST="NW"
+}
+
+export class ResizingHit {
+  constructor( public direction : ResizeDirection, public node: WorkflowNode ){}
 }
 
 export abstract class WorkflowNode {
@@ -154,8 +180,10 @@ export abstract class WorkflowNode {
 
   constructor(public canvas: WorkflowCanvasComponent, public x:number, public y: number ){}
 
+  abstract containsPointResize(x:number,y:number):ResizingHit
   abstract containsPoint(x:number,y:number):boolean
   abstract isInsideRect(x0:number,y0:number,x1:number,y1:number):boolean
+  abstract resize(direction:ResizeDirection,dx:number,dy:number)
   
   isSelected():boolean{ return this.selected && !this.canvas.isSelecting; }
 }
@@ -175,6 +203,75 @@ export class RectWorkflowNode extends WorkflowNode {
     let y: Array<number> = Utils.orderValues(y0,y1)
     return this.x >= x[0] && (this.x+this.width)<=x[1] && this.y >= y[0] && (this.y+this.height)<=y[1];
   }
+
+  containsPointResize(x:number,y:number):ResizingHit{
+    if(this.selected){
+      if( Utils.cirleContainsPoint(this.x,this.y,5,x,y) ){
+        return new ResizingHit(ResizeDirection.NORTH_WEST,this);
+      }
+      else if( Utils.cirleContainsPoint(this.x+(this.width/2),this.y,5,x,y) ){
+        return new ResizingHit(ResizeDirection.NORTH,this);
+      }
+      else if( Utils.cirleContainsPoint(this.x+this.width,this.y,5,x,y) ){
+        return new ResizingHit(ResizeDirection.NORTH_EAST,this);
+      }
+      else if( Utils.cirleContainsPoint(this.x+this.width,this.y+(this.height/2),5,x,y) ){
+        return new ResizingHit(ResizeDirection.EAST,this);
+      }
+      else if( Utils.cirleContainsPoint(this.x+this.width,this.y+this.height,5,x,y) ){
+        return new ResizingHit(ResizeDirection.SOUTH_EAST,this);
+      }
+      else if( Utils.cirleContainsPoint(this.x+(this.width/2),this.y+this.height,5,x,y) ){
+        return new ResizingHit(ResizeDirection.SOUTH,this);
+      }
+      else if( Utils.cirleContainsPoint(this.x,this.y+this.height,5,x,y)){
+        return new ResizingHit(ResizeDirection.SOUTH_WEST,this);
+      }
+      else if( Utils.cirleContainsPoint(this.x,this.y+(this.height/2),5,x,y) ){
+        return new ResizingHit(ResizeDirection.WEST,this);
+      }
+    }
+    return null;
+  }
+
+  resize(direction:ResizeDirection,dx:number,dy:number){
+    switch(direction){
+      case ResizeDirection.NORTH:
+        this.y = this.y + dy;
+        this.height = this.height - dy;
+        break;
+      case ResizeDirection.SOUTH:
+        this.height = this.height + dy;
+        break;
+      case ResizeDirection.WEST:
+        this.x = this.x + dx;
+        this.width = this.width - dx;
+        break;
+      case ResizeDirection.EAST:
+        this.width = this.width + dx;
+        break;
+      case ResizeDirection.NORTH_EAST:
+        this.y = this.y + dy;
+        this.height = this.height - dy;
+        this.width = this.width + dx;
+        break;
+      case ResizeDirection.SOUTH_EAST:
+        this.height = this.height + dy;
+        this.width = this.width + dx;
+        break;
+      case ResizeDirection.NORTH_WEST:
+        this.x = this.x + dx;
+        this.width = this.width - dx;
+        this.y = this.y + dy;
+        this.height = this.height - dy;
+        break;
+      case ResizeDirection.SOUTH_WEST:
+        this.x = this.x + dx;
+        this.width = this.width - dx;
+        this.height = this.height + dy;
+        break;
+    }
+  }
 }
 
 export class CircleWorkflowNode extends WorkflowNode {
@@ -184,15 +281,26 @@ export class CircleWorkflowNode extends WorkflowNode {
   }
 
   containsPoint(x:number,y:number):boolean{
-    const dx = this.x - x;
-    const dy = this.y - y;
-    return this.radius >= Math.hypot(dx,dy);
+    return Utils.cirleContainsPoint(this.x,this.y,this.radius,x,y)
   }
 
   isInsideRect(x0:number,y0:number,x1:number,y1:number):boolean{
     let x: Array<number> = Utils.orderValues(x0,x1)
     let y: Array<number> = Utils.orderValues(y0,y1)
     return x[0] <= (this.x-this.radius) && x[1] >= (this.x+this.radius) && y[0] <= (this.y-this.radius) && y[1] >= (this.y+this.radius)
+  }
+
+  containsPointResize(x:number,y:number):ResizingHit{
+    if(this.selected){
+      if( Utils.cirleContainsPoint(this.x+this.radius,this.y,5,x,y) ){
+        return new ResizingHit(ResizeDirection.EAST,this);
+      }
+    }
+    return null;
+  }
+
+  resize(direction:ResizeDirection,dx:number,dy:number){
+    this.radius = this.radius + dx;
   }
 }
 
@@ -236,5 +344,42 @@ export class DiamondWorkflowNode extends WorkflowNode {
     let X = this.x-(this.width/2)
     let Y = this.y-(this.height/2)
     return X >= x[0] && (X+this.width)<=x[1] && Y >= y[0] && (Y+this.height)<=y[1];
+  }
+
+  containsPointResize(x:number,y:number):ResizingHit{
+    if(this.selected){
+      if( Utils.cirleContainsPoint(this.x,this.y-(this.height/2),5,x,y) ){
+        return new ResizingHit(ResizeDirection.NORTH,this);
+      }
+      else if( Utils.cirleContainsPoint(this.x+(this.width/2),this.y,5,x,y) ){
+        return new ResizingHit(ResizeDirection.EAST,this);
+      }
+      else if( Utils.cirleContainsPoint(this.x,this.y+(this.height/2),5,x,y) ){
+        return new ResizingHit(ResizeDirection.SOUTH,this);
+      }
+      else if( Utils.cirleContainsPoint(this.x-(this.width/2),this.y,5,x,y) ){
+        return new ResizingHit(ResizeDirection.WEST,this);
+      }
+    }
+    return null;
+  }
+
+  resize(direction:ResizeDirection,dx:number,dy:number){
+    switch(direction){
+      case ResizeDirection.NORTH:
+        this.y = this.y + dy;
+        this.height = this.height - dy;
+        break;
+      case ResizeDirection.SOUTH:
+        this.height = this.height + dy;
+        break;
+      case ResizeDirection.WEST:
+        this.x = this.x + dx;
+        this.width = this.width - dx;
+        break;
+      case ResizeDirection.EAST:
+        this.width = this.width + dx;
+        break;
+    }
   }
 }
