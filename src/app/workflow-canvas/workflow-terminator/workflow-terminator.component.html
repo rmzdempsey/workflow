@@ -7,3 +7,10 @@
   [attr.class]="node.isSelected()?'is-selected':'not-selected'"
 
   />
+
+  <svg:circle  *ngIf="node.isSelected()"
+  [attr.cx]="node.x + node.radius" 
+  [attr.cy]="node.y" 
+  [attr.r]="5" 
+  [attr.class]="'selection-handle east-resize'"
+  />

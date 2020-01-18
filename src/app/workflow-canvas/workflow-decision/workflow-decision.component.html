@@ -4,3 +4,31 @@
   [attr.class]="node.isSelected()?'is-selected':'not-selected'"
 
   />
+
+  <svg:circle  *ngIf="node.isSelected()"
+  [attr.cx]="node.x" 
+  [attr.cy]="node.y - (node.height/2)" 
+  [attr.r]="5" 
+  [attr.class]="'selection-handle north-resize'"
+  />
+
+  <svg:circle  *ngIf="node.isSelected()"
+  [attr.cx]="node.x + node.width/2" 
+  [attr.cy]="node.y" 
+  [attr.r]="5" 
+  [attr.class]="'selection-handle east-resize'"
+  />
+
+  <svg:circle  *ngIf="node.isSelected()"
+  [attr.cx]="node.x" 
+  [attr.cy]="node.y + (node.height/2)" 
+  [attr.r]="5" 
+  [attr.class]="'selection-handle south-resize'"
+  />
+
+  <svg:circle  *ngIf="node.isSelected()"
+  [attr.cx]="node.x - (node.width/2)" 
+  [attr.cy]="node.y" 
+  [attr.r]="5" 
+  [attr.class]="'selection-handle west-resize'"
+  />
