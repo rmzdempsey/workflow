@@ -32,3 +32,31 @@
   [attr.r]="5" 
   [attr.class]="'selection-handle west-resize'"
   />
+
+  <svg:circle  *ngIf="node.showNorthConnection()"
+  [attr.cx]="node.x" 
+  [attr.cy]="node.y-(node.height/2)" 
+  [attr.r]="10" 
+  [attr.class]="'connection-handle'"
+  />
+
+  <svg:circle  *ngIf="node.showSouthConnection()"
+  [attr.cx]="node.x" 
+  [attr.cy]="node.y+(node.height/2)" 
+  [attr.r]="10" 
+  [attr.class]="'connection-handle'"
+  />
+
+  <svg:circle  *ngIf="node.showEastConnection()"
+  [attr.cx]="node.x+(node.width/2)" 
+  [attr.cy]="node.y" 
+  [attr.r]="10" 
+  [attr.class]="'connection-handle'"
+  />
+
+  <svg:circle  *ngIf="node.showWestConnection()"
+  [attr.cx]="node.x-(node.width/2)" 
+  [attr.cy]="node.y" 
+  [attr.r]="10" 
+  [attr.class]="'connection-handle'"
+  />
