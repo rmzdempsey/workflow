@@ -124,7 +124,6 @@ export class WorkflowCanvasComponent implements OnInit, AfterViewInit {
       this.selectionEndY = e.offsetY
       this.nodes.filter(n=> n.isInsideRect(this.selectionStartX, this.selectionStartY, e.offsetX,e.offsetY))
         .forEach(n=>n.selected=true)
-        
     }
   }
 
@@ -174,6 +173,7 @@ export class ResizingHit {
   constructor( public direction : ResizeDirection, public node: WorkflowNode ){}
 }
 
+const MIN_DIMENSION: number = 20
 export abstract class WorkflowNode {
 
   selected: boolean;
@@ -239,37 +239,71 @@ export class RectWorkflowNode extends WorkflowNode {
       case ResizeDirection.NORTH:
         this.y = this.y + dy;
         this.height = this.height - dy;
+        this.minNorth();
         break;
       case ResizeDirection.SOUTH:
         this.height = this.height + dy;
+        this.minSouth();
         break;
       case ResizeDirection.WEST:
         this.x = this.x + dx;
         this.width = this.width - dx;
+        this.minWest();
         break;
       case ResizeDirection.EAST:
         this.width = this.width + dx;
+        this.minEast();
         break;
       case ResizeDirection.NORTH_EAST:
         this.y = this.y + dy;
         this.height = this.height - dy;
         this.width = this.width + dx;
+        this.minNorth();
+        this.minEast();
         break;
       case ResizeDirection.SOUTH_EAST:
         this.height = this.height + dy;
         this.width = this.width + dx;
+        this.minEast();
+        this.minSouth();
         break;
       case ResizeDirection.NORTH_WEST:
         this.x = this.x + dx;
         this.width = this.width - dx;
         this.y = this.y + dy;
         this.height = this.height - dy;
+        this.minNorth();
+        this.minWest();
         break;
       case ResizeDirection.SOUTH_WEST:
         this.x = this.x + dx;
         this.width = this.width - dx;
         this.height = this.height + dy;
+        this.minSouth();
+        this.minWest();
         break;
+    }
+  }
+
+  minNorth(){
+    if(this.height<MIN_DIMENSION){
+      this.y = this.y - (MIN_DIMENSION - this.height);
+      this.height = MIN_DIMENSION;
+    }
+  }
+
+  minSouth(){
+    if(this.height<MIN_DIMENSION) this.height = MIN_DIMENSION;
+  }
+
+  minEast(){
+    if(this.width<MIN_DIMENSION) this.width = MIN_DIMENSION;
+  }
+
+  minWest(){
+    if(this.width<MIN_DIMENSION){
+      this.x = this.x - (MIN_DIMENSION - this.width);
+      this.width = MIN_DIMENSION;
     }
   }
 }
@@ -301,6 +335,7 @@ export class CircleWorkflowNode extends WorkflowNode {
 
   resize(direction:ResizeDirection,dx:number,dy:number){
     this.radius = this.radius + dx;
+    if( this.radius < MIN_DIMENSION/2 ) this.radius = MIN_DIMENSION/2;
   }
 }
 
@@ -367,18 +402,28 @@ export class DiamondWorkflowNode extends WorkflowNode {
   resize(direction:ResizeDirection,dx:number,dy:number){
     switch(direction){
       case ResizeDirection.NORTH:
-        this.y = this.y + dy;
-        this.height = this.height - dy;
+        this.height = this.height - (2*dy);
+        if( this.height < MIN_DIMENSION ){
+          this.height = MIN_DIMENSION;
+        }
         break;
       case ResizeDirection.SOUTH:
-        this.height = this.height + dy;
+        this.height = this.height + (2*dy);
+        if( this.height < MIN_DIMENSION ){
+          this.height = MIN_DIMENSION;
+        } 
         break;
       case ResizeDirection.WEST:
-        this.x = this.x + dx;
-        this.width = this.width - dx;
+        this.width = this.width - (2*dx);
+        if( this.width < MIN_DIMENSION ){
+          this.width = MIN_DIMENSION;
+        } 
         break;
       case ResizeDirection.EAST:
-        this.width = this.width + dx;
+        this.width = this.width + (2*dx);
+        if( this.width < MIN_DIMENSION ){
+          this.width = MIN_DIMENSION;
+        } 
         break;
     }
   }
