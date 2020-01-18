@@ -19,16 +19,16 @@ export class WorkflowCanvasComponent implements OnInit, AfterViewInit {
   selectionEndY: number;
   
   newTask(){
-    this.nodes.push(new RectWorkflowNode(
-      Math.random() * 100,
-      Math.random() * 100,
-      Math.random() * 100,
-      Math.random() * 100,
+    this.addNode( new RectWorkflowNode(this,
+      100,
+      100,
+      100,
+      100,
     ))
   }
 
   newDecision(){
-    this.nodes.push(new DiamondWorkflowNode(
+    this.addNode( new DiamondWorkflowNode(this,
       100,
       100,
       100,
@@ -37,11 +37,17 @@ export class WorkflowCanvasComponent implements OnInit, AfterViewInit {
   }
 
   newTerminator(){
-    this.nodes.push(new CircleWorkflowNode(
-      Math.random() * 100,
-      Math.random() * 100,
-      Math.random() * 100
+    this.addNode( new CircleWorkflowNode(this,
+      100,
+      100,
+      50,
     ))
+  }
+
+  addNode(n:WorkflowNode){
+    this.nodes.forEach(n=>n.selected=false);
+    this.nodes.push(n)
+    n.selected = true
   }
 
   ngOnInit() {
@@ -146,16 +152,18 @@ export abstract class WorkflowNode {
 
   selected: boolean;
 
-  constructor(public x:number, public y: number ){}
+  constructor(public canvas: WorkflowCanvasComponent, public x:number, public y: number ){}
 
   abstract containsPoint(x:number,y:number):boolean
   abstract isInsideRect(x0:number,y0:number,x1:number,y1:number):boolean
+  
+  isSelected():boolean{ return this.selected && !this.canvas.isSelecting; }
 }
 
 export class RectWorkflowNode extends WorkflowNode {
 
-  constructor(x:number, y: number, public width: number, public height: number ){
-    super(x,y)
+  constructor(canvas: WorkflowCanvasComponent, x:number, y: number, public width: number, public height: number ){
+    super(canvas,x,y)
   }
 
   containsPoint(x:number,y:number):boolean{
@@ -171,8 +179,8 @@ export class RectWorkflowNode extends WorkflowNode {
 
 export class CircleWorkflowNode extends WorkflowNode {
 
-  constructor(x:number, y: number, public radius: number ){
-    super(x,y)
+  constructor(canvas: WorkflowCanvasComponent, x:number, y: number, public radius: number ){
+    super(canvas,x,y)
   }
 
   containsPoint(x:number,y:number):boolean{
@@ -190,8 +198,8 @@ export class CircleWorkflowNode extends WorkflowNode {
 
 export class DiamondWorkflowNode extends WorkflowNode {
 
-  constructor(x:number, y: number, public width: number, public height: number ){
-    super(x,y)
+  constructor(canvas: WorkflowCanvasComponent, x:number, y: number, public width: number, public height: number ){
+    super(canvas, x,y)
   }
 
   containsPoint(x:number,y:number):boolean{
