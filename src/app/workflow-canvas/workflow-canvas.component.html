@@ -11,61 +11,78 @@
      class="workflow-canvas"
      >
 
+     <svg:style type="text/css" >
+     <![CDATA[
+         .is-selected {
+             stroke: black;
+             fill:   white;
+             stroke-dasharray:4;
+             cursor: move;
+         }
+         .not-selected {
+             stroke: black;
+             fill:   white;
+             cursor: move;
+         } 
+         .is_selecting {
+           stroke: lightblue;
+           fill:   lightskyblue;
+           fill-opacity: 0.1;
+         }
+         .selection-handle {
+           stroke: none;
+           fill:   lightskyblue;
+           fill-opacity: 0.50;
+         }
+         .north-resize {
+           cursor: n-resize;
+         }
+         .east-resize {
+           cursor: e-resize;
+         }
+         .south-resize {
+           cursor: s-resize;
+         }
+         .west-resize {
+           cursor: w-resize;
+         }
+         .north-west-resize {
+           cursor: nw-resize;
+         }
+         .north-east-resize {
+           cursor: ne-resize;
+         }
+         .south-west-resize {
+           cursor: sw-resize;
+         }
+         .south-east-resize {
+           cursor: se-resize;
+         }
+         .connection-handle {
+           stroke: none;
+           fill:   lime;
+           fill-opacity: 0.50;
+         }
+         .connecting {
+           stroke: black;
+           stroke-width: 1;
+         }
+         .connected {
+          stroke: black;
+          stroke-width: 1;
+        }
+     ]]>
+ </svg:style>
+ <svg:defs>
+   <svg:marker id="arrow" viewBox="0 0 10 10" refX="10" refY="5"
+       markerWidth="10" markerHeight="10"
+       orient="auto-start-reverse">
+     <path d="M 0 0 L 10 5 L 0 10" />
+   </svg:marker>
+ </svg:defs>
+
   <svg:g *ngFor="let node of nodes">
-    <svg:style type="text/css" >
-      <![CDATA[
-          .is-selected {
-              stroke: black;
-              fill:   white;
-              stroke-dasharray:4;
-              cursor: move;
-          }
-          .not-selected {
-              stroke: black;
-              fill:   white;
-              cursor: move;
-          } 
-          .is_selecting {
-            stroke: lightblue;
-            fill:   lightskyblue;
-            fill-opacity: 0.1;
-          }
-          .selection-handle {
-            stroke: none;
-            fill:   lightskyblue;
-            fill-opacity: 0.50;
-          }
-          .north-resize {
-            cursor: n-resize;
-          }
-          .east-resize {
-            cursor: e-resize;
-          }
-          .south-resize {
-            cursor: s-resize;
-          }
-          .west-resize {
-            cursor: w-resize;
-          }
-          .north-west-resize {
-            cursor: nw-resize;
-          }
-          .north-east-resize {
-            cursor: ne-resize;
-          }
-          .south-west-resize {
-            cursor: sw-resize;
-          }
-          .south-east-resize {
-            cursor: se-resize;
-          }
-          .connection-handle {
-            stroke: none;
-            fill:   lime;
-            fill-opacity: 0.50;
-          }
-      ]]>
-  </svg:style>
+    
 
     <svg:g app-workflow-task [node]="node" *ngIf="node.constructor.name === 'RectWorkflowNode' "></svg:g>
     <svg:g app-workflow-terminator [node]="node" *ngIf="node.constructor.name === 'CircleWorkflowNode' "></svg:g>
@@ -76,8 +93,17 @@
         [attr.width]="getSelectionWidth()" [attr.height]="getSelectionHeight()" 
         [attr.class]="'is_selecting'" ></svg:rect>
     </svg:g>
+
+    <svg:g *ngIf="isConnecting">
+      <svg:path [attr.d]="connectionPath()"
+        [attr.class]="'connecting'" marker-end="url(#arrow)"></svg:path>
+    </svg:g>
     
   </svg:g>
   
+  <svg:g *ngFor="let edge of edges">
+    <svg:path [attr.d]="edge.connectionPath()"
+        [attr.class]="'connected'" marker-end="url(#arrow)"></svg:path>
+  </svg:g>
 
 </svg>

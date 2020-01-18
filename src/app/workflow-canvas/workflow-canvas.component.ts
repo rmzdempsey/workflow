@@ -10,15 +10,20 @@ export class WorkflowCanvasComponent implements OnInit, AfterViewInit {
   constructor() { }
 
   nodes : Array<WorkflowNode> = []
+  edges : Array<WorkflowEdge> = []
 
   isSelecting: boolean;
   isDragging: boolean;
+  isConnecting: boolean;
   resizeHit: DirectionalHit;
   sourceHit: DirectionalHit;
+  targetHit: DirectionalHit;
   selectionStartX: number;
   selectionStartY: number;
   selectionEndX: number;
   selectionEndY: number;
+  connectingX: number;
+  connectingY: number;
   
   newTask(){
     this.addNode( new RectWorkflowNode(this,
@@ -73,6 +78,13 @@ export class WorkflowCanvasComponent implements OnInit, AfterViewInit {
     this.isDragging = false;
     this.resizeHit = null;
 
+    if(this.sourceHit){
+      this.isConnecting=true;
+      this.connectingX=this.sourceHit.x;
+      this.connectingY=this.sourceHit.y;
+      return
+    }
+
     let resizeHits:Array<WorkflowNode> = this.nodes.slice().reverse().filter(n=>n.containsPointResize(e.offsetX,e.offsetY))
     if(resizeHits.length>0){
       this.resizeHit = resizeHits[0].containsPointResize(e.offsetX,e.offsetY)
@@ -101,15 +113,32 @@ export class WorkflowCanvasComponent implements OnInit, AfterViewInit {
   }
 
   onPointerUp(e:PointerEvent){
-    if( this.isDragging ){
+    if( this.sourceHit && this.targetHit ){
+      this.edges.push(new WorkflowEdge(this.sourceHit,this.targetHit))
+    }
+    else if( this.isDragging ){
       e.srcElement.releasePointerCapture(e.pointerId);
     }
     this.isDragging = false;
     this.isSelecting = false;
+    this.isConnecting = false;
     this.resizeHit = null;
+    this.sourceHit=null;
+    this.targetHit=null;
   }
 
   onPointerMove(e:PointerEvent){
+    this.targetHit = null;
+    if(this.isConnecting){
+      this.connectingX=e.offsetX;
+      this.connectingY=e.offsetY;
+      let targetHits:Array<WorkflowNode> = this.nodes.slice().reverse().filter(n=>n.containsPointConnection(e.offsetX,e.offsetY)).filter(n=>n!=this.sourceHit.node)
+      if(targetHits.length>0){
+        this.targetHit = targetHits[0].containsPointConnection(e.offsetX,e.offsetY);
+        return
+      }
+      return;
+    }
     this.sourceHit = null;
     if( this.resizeHit ){
       this.resizeHit.node.resize(this.resizeHit.direction,e.movementX,e.movementY)
@@ -128,7 +157,7 @@ export class WorkflowCanvasComponent implements OnInit, AfterViewInit {
         .forEach(n=>n.selected=true)
     }
     else{
-      let sourceHits:Array<WorkflowNode> = this.nodes.slice().reverse().filter(n=>n.containsPointConnection(e.offsetX,e.offsetY))
+      let sourceHits:Array<WorkflowNode> = this.nodes.slice().reverse().filter(n=>n.containsPointConnection(e.offsetX,e.offsetY)).filter(n=>!n.selected)
       if(sourceHits.length>0){
         this.sourceHit = sourceHits[0].containsPointConnection(e.offsetX,e.offsetY);
         return
@@ -155,6 +184,10 @@ export class WorkflowCanvasComponent implements OnInit, AfterViewInit {
     let y :Array<number>= Utils.orderValues(this.selectionStartY,this.selectionEndY)
     return Math.abs(y[1]-y[0]);
   }
+
+  connectionPath():string{
+    return `M ${this.sourceHit.x} ${this.sourceHit.y} L ${this.connectingX} ${this.connectingY}`
+  }
 }
 
 class Utils {
@@ -179,7 +212,7 @@ export enum Direction {
 }
 
 export class DirectionalHit {
-  constructor( public direction : Direction, public node: WorkflowNode ){}
+  constructor( public direction : Direction, public node: WorkflowNode, public x:number, public y:number ){}
 }
 
 const MIN_DIMENSION: number = 20
@@ -196,31 +229,34 @@ export abstract class WorkflowNode {
   abstract resize(direction:Direction,dx:number,dy:number)
   
   isSelected():boolean{ return this.selected && !this.canvas.isSelecting; }
-  isCanvasConnectionHit():boolean{ return this.canvas.sourceHit != null && this.canvas.sourceHit.node === this }
+  isCanvasConnectionHit(direction:Direction):boolean{ 
+    return (this.canvas.sourceHit != null && this.canvas.sourceHit.node === this && this.canvas.sourceHit.direction==direction)  
+    || (this.canvas.targetHit != null && this.canvas.targetHit.node === this && this.canvas.targetHit.direction==direction)
+  }
 
   showNorthConnection(): boolean {
-    return this.isCanvasConnectionHit() && this.canvas.sourceHit.direction == Direction.NORTH;
+    return this.isCanvasConnectionHit(Direction.NORTH);
   }
   showNorthEastConnection(): boolean {
-    return this.isCanvasConnectionHit() && this.canvas.sourceHit.direction == Direction.NORTH_EAST;
+    return this.isCanvasConnectionHit(Direction.NORTH_EAST);
   }
   showEastConnection(): boolean {
-    return this.isCanvasConnectionHit() && this.canvas.sourceHit.direction == Direction.EAST;
+    return this.isCanvasConnectionHit(Direction.EAST);
   }
   showSouthEastConnection(): boolean {
-    return this.isCanvasConnectionHit() && this.canvas.sourceHit.direction == Direction.SOUTH_EAST;
+    return this.isCanvasConnectionHit(Direction.SOUTH_EAST);
   }
   showSouthConnection(): boolean {
-    return this.isCanvasConnectionHit() && this.canvas.sourceHit.direction == Direction.SOUTH;
+    return this.isCanvasConnectionHit(Direction.SOUTH);
   }
   showSouthWestConnection(): boolean {
-    return this.isCanvasConnectionHit() && this.canvas.sourceHit.direction == Direction.SOUTH_WEST;
+    return this.isCanvasConnectionHit(Direction.SOUTH_WEST);
   }
   showWestConnection(): boolean {
-    return this.isCanvasConnectionHit() && this.canvas.sourceHit.direction == Direction.WEST;
+    return this.isCanvasConnectionHit(Direction.WEST);
   }
   showNorthWestConnection(): boolean {
-    return this.isCanvasConnectionHit() && this.canvas.sourceHit.direction == Direction.NORTH_WEST;
+    return this.isCanvasConnectionHit(Direction.NORTH_WEST);
   }
 }
 
@@ -243,28 +279,28 @@ export class RectWorkflowNode extends WorkflowNode {
   containsPointResize(x:number,y:number):DirectionalHit{
     if(this.selected){
       if( Utils.cirleContainsPoint(this.x,this.y,5,x,y) ){
-        return new DirectionalHit(Direction.NORTH_WEST,this);
+        return new DirectionalHit(Direction.NORTH_WEST,this,x,y);
       }
       else if( Utils.cirleContainsPoint(this.x+(this.width/2),this.y,5,x,y) ){
-        return new DirectionalHit(Direction.NORTH,this);
+        return new DirectionalHit(Direction.NORTH,this,x,y);
       }
       else if( Utils.cirleContainsPoint(this.x+this.width,this.y,5,x,y) ){
-        return new DirectionalHit(Direction.NORTH_EAST,this);
+        return new DirectionalHit(Direction.NORTH_EAST,this,x,y);
       }
       else if( Utils.cirleContainsPoint(this.x+this.width,this.y+(this.height/2),5,x,y) ){
-        return new DirectionalHit(Direction.EAST,this);
+        return new DirectionalHit(Direction.EAST,this,x,y);
       }
       else if( Utils.cirleContainsPoint(this.x+this.width,this.y+this.height,5,x,y) ){
-        return new DirectionalHit(Direction.SOUTH_EAST,this);
+        return new DirectionalHit(Direction.SOUTH_EAST,this,x,y);
       }
       else if( Utils.cirleContainsPoint(this.x+(this.width/2),this.y+this.height,5,x,y) ){
-        return new DirectionalHit(Direction.SOUTH,this);
+        return new DirectionalHit(Direction.SOUTH,this,x,y);
       }
       else if( Utils.cirleContainsPoint(this.x,this.y+this.height,5,x,y)){
-        return new DirectionalHit(Direction.SOUTH_WEST,this);
+        return new DirectionalHit(Direction.SOUTH_WEST,this,x,y);
       }
       else if( Utils.cirleContainsPoint(this.x,this.y+(this.height/2),5,x,y) ){
-        return new DirectionalHit(Direction.WEST,this);
+        return new DirectionalHit(Direction.WEST,this,x,y);
       }
     }
     return null;
@@ -344,19 +380,17 @@ export class RectWorkflowNode extends WorkflowNode {
   }
 
   containsPointConnection(x:number,y:number):DirectionalHit{
-    if( !this.selected ){
-      if( Utils.cirleContainsPoint(this.x+(this.width/2),this.y,5,x,y) ){
-        return new DirectionalHit(Direction.NORTH,this);
-      }
-      else if( Utils.cirleContainsPoint(this.x+this.width,this.y+(this.height/2),5,x,y) ){
-        return new DirectionalHit(Direction.EAST,this);
-      }
-      else if( Utils.cirleContainsPoint(this.x+(this.width/2),this.y+this.height,5,x,y) ){
-        return new DirectionalHit(Direction.SOUTH,this);
-      }
-      else if( Utils.cirleContainsPoint(this.x,this.y+(this.height/2),5,x,y) ){
-        return new DirectionalHit(Direction.WEST,this);
-      }
+    if( Utils.cirleContainsPoint(this.x+(this.width/2),this.y,5,x,y) ){
+      return new DirectionalHit(Direction.NORTH,this,this.x+(this.width/2),this.y);
+    }
+    else if( Utils.cirleContainsPoint(this.x+this.width,this.y+(this.height/2),5,x,y) ){
+      return new DirectionalHit(Direction.EAST,this,this.x+this.width,this.y+(this.height/2));
+    }
+    else if( Utils.cirleContainsPoint(this.x+(this.width/2),this.y+this.height,5,x,y) ){
+      return new DirectionalHit(Direction.SOUTH,this,this.x+(this.width/2),this.y+this.height);
+    }
+    else if( Utils.cirleContainsPoint(this.x,this.y+(this.height/2),5,x,y) ){
+      return new DirectionalHit(Direction.WEST,this,this.x,this.y+(this.height/2));
     }
     return null;
   }
@@ -381,7 +415,7 @@ export class CircleWorkflowNode extends WorkflowNode {
   containsPointResize(x:number,y:number):DirectionalHit{
     if(this.selected){
       if( Utils.cirleContainsPoint(this.x+this.radius,this.y,5,x,y) ){
-        return new DirectionalHit(Direction.EAST,this);
+        return new DirectionalHit(Direction.EAST,this,x,y);
       }
     }
     return null;
@@ -393,19 +427,17 @@ export class CircleWorkflowNode extends WorkflowNode {
   }
 
   containsPointConnection(x:number,y:number):DirectionalHit{
-    if( !this.selected ){
-      if( Utils.cirleContainsPoint(this.x,this.y-this.radius,5,x,y) ){
-        return new DirectionalHit(Direction.NORTH,this);
-      }
-      else if( Utils.cirleContainsPoint(this.x+this.radius,this.y,5,x,y) ){
-        return new DirectionalHit(Direction.EAST,this);
-      }
-      else if( Utils.cirleContainsPoint(this.x,this.y+this.radius,5,x,y) ){
-        return new DirectionalHit(Direction.SOUTH,this);
-      }
-      else if( Utils.cirleContainsPoint(this.x-this.radius,this.y,5,x,y) ){
-        return new DirectionalHit(Direction.WEST,this);
-      }
+    if( Utils.cirleContainsPoint(this.x,this.y-this.radius,5,x,y) ){
+      return new DirectionalHit(Direction.NORTH,this,this.x,this.y-this.radius);
+    }
+    else if( Utils.cirleContainsPoint(this.x+this.radius,this.y,5,x,y) ){
+      return new DirectionalHit(Direction.EAST,this,this.x+this.radius,this.y);
+    }
+    else if( Utils.cirleContainsPoint(this.x,this.y+this.radius,5,x,y) ){
+      return new DirectionalHit(Direction.SOUTH,this,this.x,this.y+this.radius);
+    }
+    else if( Utils.cirleContainsPoint(this.x-this.radius,this.y,5,x,y) ){
+      return new DirectionalHit(Direction.WEST,this,this.x-this.radius,this.y);
     }
     return null;
   }
@@ -457,16 +489,16 @@ export class DiamondWorkflowNode extends WorkflowNode {
   containsPointResize(x:number,y:number):DirectionalHit{
     if(this.selected){
       if( Utils.cirleContainsPoint(this.x,this.y-(this.height/2),5,x,y) ){
-        return new DirectionalHit(Direction.NORTH,this);
+        return new DirectionalHit(Direction.NORTH,this,x,y);
       }
       else if( Utils.cirleContainsPoint(this.x+(this.width/2),this.y,5,x,y) ){
-        return new DirectionalHit(Direction.EAST,this);
+        return new DirectionalHit(Direction.EAST,this,x,y);
       }
       else if( Utils.cirleContainsPoint(this.x,this.y+(this.height/2),5,x,y) ){
-        return new DirectionalHit(Direction.SOUTH,this);
+        return new DirectionalHit(Direction.SOUTH,this,x,y);
       }
       else if( Utils.cirleContainsPoint(this.x-(this.width/2),this.y,5,x,y) ){
-        return new DirectionalHit(Direction.WEST,this);
+        return new DirectionalHit(Direction.WEST,this,x,y);
       }
     }
     return null;
@@ -502,20 +534,26 @@ export class DiamondWorkflowNode extends WorkflowNode {
   }
 
   containsPointConnection(x:number,y:number):DirectionalHit{
-    if( !this.selected ){
-      if( Utils.cirleContainsPoint(this.x,this.y-(this.height/2),5,x,y) ){
-        return new DirectionalHit(Direction.NORTH,this);
-      }
-      else if( Utils.cirleContainsPoint(this.x+(this.width/2),this.y,5,x,y) ){
-        return new DirectionalHit(Direction.EAST,this);
-      }
-      else if( Utils.cirleContainsPoint(this.x,this.y+(this.height/2),5,x,y) ){
-        return new DirectionalHit(Direction.SOUTH,this);
-      }
-      else if( Utils.cirleContainsPoint(this.x-(this.width/2),this.y,5,x,y) ){
-        return new DirectionalHit(Direction.WEST,this);
-      }
+    if( Utils.cirleContainsPoint(this.x,this.y-(this.height/2),5,x,y) ){
+      return new DirectionalHit(Direction.NORTH,this,this.x,this.y-(this.height/2));
+    }
+    else if( Utils.cirleContainsPoint(this.x+(this.width/2),this.y,5,x,y) ){
+      return new DirectionalHit(Direction.EAST,this,this.x+(this.width/2),this.y);
+    }
+    else if( Utils.cirleContainsPoint(this.x,this.y+(this.height/2),5,x,y) ){
+      return new DirectionalHit(Direction.SOUTH,this,this.x,this.y+(this.height/2));
+    }
+    else if( Utils.cirleContainsPoint(this.x-(this.width/2),this.y,5,x,y) ){
+      return new DirectionalHit(Direction.WEST,this,this.x-(this.width/2),this.y);
     }
     return null;
+  }
+}
+
+export class WorkflowEdge {
+  constructor( public source: DirectionalHit, public target: DirectionalHit ){}
+
+  connectionPath():string{
+    return `M ${this.source.x} ${this.source.y} L ${this.target.x} ${this.target.y}`
   }
 }
