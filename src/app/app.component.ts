@@ -7,7 +7,7 @@ import { WorkflowCanvasComponent } from './workflow-canvas/workflow-canvas.compo
   styleUrls: ['./app.component.scss']
 })
 export class AppComponent {
-  @ViewChild('canvas') canvas : WorkflowCanvasComponent;
+  @ViewChild('canvas', {static:false}) canvas : WorkflowCanvasComponent;
 }
 
 

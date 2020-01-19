@@ -1,5 +1,19 @@
-<div><button (click)="canvas.newTask()">new task</button></div>
-<div><button (click)="canvas.newDecision()">new decision</button></div>
-<div><button (click)="canvas.newTerminator()">new terminator</button></div>
+<div fxLayout="row" fxLayoutGap="50px">
+    <div fxLayout="column">
+        <div><button (click)="canvas.newTask()">new task</button></div>
+        <div><button (click)="canvas.newDecision()">new decision</button></div>
+        <div><button (click)="canvas.newTerminator()">new terminator</button></div>
+    </div>
+    <div fxLayout="column">
+        <div><button (click)="canvas.undo()">undo</button></div>
+        <div><button (click)="canvas.redo()">redo</button></div>
+    </div>
+    <div fxLayout="column">
+        <div><button (click)="canvas.cut()">cut</button></div>
+        <div><button (click)="canvas.copy()">copy</button></div>
+        <div><button (click)="canvas.paste()">paste</button></div>
+        <div><button (click)="canvas.delete()">delete</button></div>
+    </div>
+</div>
 
 <app-workflow-canvas #canvas></app-workflow-canvas>

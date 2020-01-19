@@ -9,8 +9,7 @@ export class WorkflowCanvasComponent implements OnInit, AfterViewInit {
 
   constructor() { }
 
-  nodes : Array<WorkflowNode> = []
-  edges : Array<WorkflowEdge> = []
+  model : WorkflowModel;
 
   isSelecting: boolean;
   isDragging: boolean;
@@ -52,12 +51,13 @@ export class WorkflowCanvasComponent implements OnInit, AfterViewInit {
   }
 
   addNode(n:WorkflowNode){
-    this.nodes.forEach(n=>n.selected=false);
-    this.nodes.push(n)
+    this.model.nodes.forEach(n=>n.selected=false);
+    this.model.nodes.push(n)
     n.selected = true
   }
 
   ngOnInit() {
+    this.model=new WorkflowModel();
   }
 
   @HostListener("window:resize", [])
@@ -85,16 +85,16 @@ export class WorkflowCanvasComponent implements OnInit, AfterViewInit {
       return
     }
 
-    let resizeHits:Array<WorkflowNode> = this.nodes.slice().reverse().filter(n=>n.containsPointResize(e.offsetX,e.offsetY))
+    let resizeHits:Array<WorkflowNode> = this.model.nodes.slice().reverse().filter(n=>n.containsPointResize(e.offsetX,e.offsetY))
     if(resizeHits.length>0){
       this.resizeHit = resizeHits[0].containsPointResize(e.offsetX,e.offsetY)
       return
     }
 
-    let hit : WorkflowNode = this.nodes.slice().reverse().find(n=>n.containsPoint(e.offsetX,e.offsetY))
+    let hit : WorkflowNode = this.model.nodes.slice().reverse().find(n=>n.containsPoint(e.offsetX,e.offsetY))
 
     if(!hit){
-      this.nodes.forEach(n=>n.selected=false);
+      this.model.nodes.forEach(n=>n.selected=false);
       this.isSelecting = true;
       this.selectionStartX = e.offsetX;
       this.selectionStartY = e.offsetY;
@@ -104,20 +104,20 @@ export class WorkflowCanvasComponent implements OnInit, AfterViewInit {
     else{
       this.isDragging = true;
       if(!hit.selected){
-        this.nodes.forEach(n=>n.selected=false);
+        this.model.nodes.forEach(n=>n.selected=false);
         hit.selected = true;
       }
       hit.selected = true;
-      e.srcElement.setPointerCapture(e.pointerId);
+      (e.srcElement as HTMLElement).setPointerCapture(e.pointerId);
     }
   }
 
   onPointerUp(e:PointerEvent){
     if( this.sourceHit && this.targetHit ){
-      this.edges.push(new WorkflowEdge(this.sourceHit,this.targetHit))
+      this.model.edges.push(new WorkflowEdge(this.sourceHit,this.targetHit))
     }
     else if( this.isDragging ){
-      e.srcElement.releasePointerCapture(e.pointerId);
+      (e.srcElement as HTMLElement).releasePointerCapture(e.pointerId);
     }
     this.isDragging = false;
     this.isSelecting = false;
@@ -132,7 +132,7 @@ export class WorkflowCanvasComponent implements OnInit, AfterViewInit {
     if(this.isConnecting){
       this.connectingX=e.offsetX;
       this.connectingY=e.offsetY;
-      let targetHits:Array<WorkflowNode> = this.nodes.slice().reverse().filter(n=>n.containsPointConnection(e.offsetX,e.offsetY)).filter(n=>n!=this.sourceHit.node)
+      let targetHits:Array<WorkflowNode> = this.model.nodes.slice().reverse().filter(n=>n.containsPointConnection(e.offsetX,e.offsetY)).filter(n=>n!=this.sourceHit.node)
       if(targetHits.length>0){
         this.targetHit = targetHits[0].containsPointConnection(e.offsetX,e.offsetY);
         return
@@ -144,7 +144,7 @@ export class WorkflowCanvasComponent implements OnInit, AfterViewInit {
       this.resizeHit.node.resize(this.resizeHit.direction,e.movementX,e.movementY)
     }
     else if( this.isDragging ){
-      this.nodes.filter(n=>n.selected)
+      this.model.nodes.filter(n=>n.selected)
       .forEach(n=>{
         n.x = n.x + e.movementX
         n.y = n.y + e.movementY
@@ -153,11 +153,11 @@ export class WorkflowCanvasComponent implements OnInit, AfterViewInit {
     else if( this.isSelecting ){
       this.selectionEndX = e.offsetX;
       this.selectionEndY = e.offsetY
-      this.nodes.filter(n=> n.isInsideRect(this.selectionStartX, this.selectionStartY, e.offsetX,e.offsetY))
+      this.model.nodes.filter(n=> n.isInsideRect(this.selectionStartX, this.selectionStartY, e.offsetX,e.offsetY))
         .forEach(n=>n.selected=true)
     }
     else{
-      let sourceHits:Array<WorkflowNode> = this.nodes.slice().reverse().filter(n=>n.containsPointConnection(e.offsetX,e.offsetY)).filter(n=>!n.selected)
+      let sourceHits:Array<WorkflowNode> = this.model.nodes.slice().reverse().filter(n=>n.containsPointConnection(e.offsetX,e.offsetY)).filter(n=>!n.selected)
       if(sourceHits.length>0){
         this.sourceHit = sourceHits[0].containsPointConnection(e.offsetX,e.offsetY);
         return
@@ -187,6 +187,31 @@ export class WorkflowCanvasComponent implements OnInit, AfterViewInit {
 
   connectionPath():string{
     return `M ${this.sourceHit.x} ${this.sourceHit.y} L ${this.connectingX} ${this.connectingY}`
+  }
+
+  undo(){
+    console.log("undo request")
+  }
+  redo(){
+    console.log("redo request")
+  }
+  copy(){
+    console.log("copy request")
+  }
+  paste(){
+    console.log("paste request")
+  }
+  cut(){
+    console.log("cut request")
+  }
+  delete(){
+    console.log("delete request")
+  }
+}
+
+export class WorkflowModel{
+  constructor(public nodes : Array<WorkflowNode> = [], public edges : Array<WorkflowEdge> = [] ){
+
   }
 }
 
