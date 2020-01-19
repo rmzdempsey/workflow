@@ -1,60 +1,60 @@
 <svg:path  
   [attr.d]="path()" 
   
-  [attr.class]="node.isSelected()?'is-selected':'not-selected'"
+  [attr.class]="node.isSelected(canvas)?'is-selected':'not-selected'"
 
   />
 
-  <svg:circle  *ngIf="node.isSelected()"
+  <svg:circle  *ngIf="node.isSelected(canvas)"
   [attr.cx]="node.x" 
   [attr.cy]="node.y - (node.height/2)" 
   [attr.r]="5" 
   [attr.class]="'selection-handle north-resize'"
   />
 
-  <svg:circle  *ngIf="node.isSelected()"
+  <svg:circle  *ngIf="node.isSelected(canvas)"
   [attr.cx]="node.x + node.width/2" 
   [attr.cy]="node.y" 
   [attr.r]="5" 
   [attr.class]="'selection-handle east-resize'"
   />
 
-  <svg:circle  *ngIf="node.isSelected()"
+  <svg:circle  *ngIf="node.isSelected(canvas)"
   [attr.cx]="node.x" 
   [attr.cy]="node.y + (node.height/2)" 
   [attr.r]="5" 
   [attr.class]="'selection-handle south-resize'"
   />
 
-  <svg:circle  *ngIf="node.isSelected()"
+  <svg:circle  *ngIf="node.isSelected(canvas)"
   [attr.cx]="node.x - (node.width/2)" 
   [attr.cy]="node.y" 
   [attr.r]="5" 
   [attr.class]="'selection-handle west-resize'"
   />
 
-  <svg:circle  *ngIf="node.showNorthConnection()"
+  <svg:circle  *ngIf="node.showNorthConnection(canvas)"
   [attr.cx]="node.x" 
   [attr.cy]="node.y-(node.height/2)" 
   [attr.r]="10" 
   [attr.class]="'connection-handle'"
   />
 
-  <svg:circle  *ngIf="node.showSouthConnection()"
+  <svg:circle  *ngIf="node.showSouthConnection(canvas)"
   [attr.cx]="node.x" 
   [attr.cy]="node.y+(node.height/2)" 
   [attr.r]="10" 
   [attr.class]="'connection-handle'"
   />
 
-  <svg:circle  *ngIf="node.showEastConnection()"
+  <svg:circle  *ngIf="node.showEastConnection(canvas)"
   [attr.cx]="node.x+(node.width/2)" 
   [attr.cy]="node.y" 
   [attr.r]="10" 
   [attr.class]="'connection-handle'"
   />
 
-  <svg:circle  *ngIf="node.showWestConnection()"
+  <svg:circle  *ngIf="node.showWestConnection(canvas)"
   [attr.cx]="node.x-(node.width/2)" 
   [attr.cy]="node.y" 
   [attr.r]="10" 

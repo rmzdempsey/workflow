@@ -11,7 +11,8 @@ export class WorkflowCanvasComponent implements OnInit, AfterViewInit {
   constructor() { }
 
   model : WorkflowModel;
-  undoStack: Array<WorkflowModel> = [];
+  clipBoard: WorkflowModel;
+  undoStack: Array<UndoEntry> = [];
   undoStackIndex: number = -1;
 
   isSelecting: boolean;
@@ -22,13 +23,15 @@ export class WorkflowCanvasComponent implements OnInit, AfterViewInit {
   targetHit: DirectionalHit;
   selectionStartX: number;
   selectionStartY: number;
+  startDragX: number;
+  startDragY: number;
   selectionEndX: number;
   selectionEndY: number;
   connectingX: number;
   connectingY: number;
   
   newTask(){
-    this.addNode( new RectWorkflowNode(this,
+    this.addNode( new RectWorkflowNode(
       100,
       100,
       100,
@@ -37,7 +40,7 @@ export class WorkflowCanvasComponent implements OnInit, AfterViewInit {
   }
 
   newDecision(){
-    this.addNode( new DiamondWorkflowNode(this,
+    this.addNode( new DiamondWorkflowNode(
       100,
       100,
       100,
@@ -46,7 +49,7 @@ export class WorkflowCanvasComponent implements OnInit, AfterViewInit {
   }
 
   newTerminator(){
-    this.addNode( new CircleWorkflowNode(this,
+    this.addNode( new CircleWorkflowNode(
       100,
       100,
       30,
@@ -56,13 +59,12 @@ export class WorkflowCanvasComponent implements OnInit, AfterViewInit {
   addNode(n:WorkflowNode){
     this.model.nodes.forEach(n=>n.selected=false);
     this.model.nodes.push(n)
-    n.selected = true
-    this.postEdit()
+    this.postEdit("ADD");
   }
 
   ngOnInit() {
     this.model=new WorkflowModel();
-    this.postEdit();
+    this.postEdit("INIT");
   }
 
   @HostListener("window:resize", [])
@@ -108,6 +110,8 @@ export class WorkflowCanvasComponent implements OnInit, AfterViewInit {
     }
     else{
       this.isDragging = true;
+      this.startDragX = e.offsetX;
+      this.startDragY = e.offsetY;
       if(!hit.selected){
         this.model.nodes.forEach(n=>n.selected=false);
         hit.selected = true;
@@ -119,12 +123,13 @@ export class WorkflowCanvasComponent implements OnInit, AfterViewInit {
 
   onPointerUp(e:PointerEvent){
     if( this.sourceHit && this.targetHit ){
-      this.model.edges.push(new WorkflowEdge(this.sourceHit,this.targetHit))
-      this.postEdit()
+      this.model.edges.push(new WorkflowEdge(this.sourceHit.node.id,this.sourceHit.direction,this.targetHit.node.id,this.targetHit.direction))
+      this.postEdit("NEW EDGE")
     }
     else if( this.isDragging ){
       (e.srcElement as HTMLElement).releasePointerCapture(e.pointerId);
-      this.postEdit()
+      if( this.startDragX != e.offsetX || this.startDragY != e.offsetY )
+        this.postEdit("MOVE")
     }
     this.isDragging = false;
     this.isSelecting = false;
@@ -139,7 +144,7 @@ export class WorkflowCanvasComponent implements OnInit, AfterViewInit {
     if(this.isConnecting){
       this.connectingX=e.offsetX;
       this.connectingY=e.offsetY;
-      let targetHits:Array<WorkflowNode> = this.model.nodes.slice().reverse().filter(n=>n.containsPointConnection(e.offsetX,e.offsetY)).filter(n=>n!=this.sourceHit.node)
+      let targetHits:Array<WorkflowNode> = this.model.nodes.slice().reverse().filter(n=>n.containsPointConnection(e.offsetX,e.offsetY)).filter(n=>n.id!=this.sourceHit.node.id)
       if(targetHits.length>0){
         this.targetHit = targetHits[0].containsPointConnection(e.offsetX,e.offsetY);
         return
@@ -196,44 +201,96 @@ export class WorkflowCanvasComponent implements OnInit, AfterViewInit {
     return `M ${this.sourceHit.x} ${this.sourceHit.y} L ${this.connectingX} ${this.connectingY}`
   }
 
-  postEdit(){
-    let cloned = _.cloneDeep(this.model);
-    cloned.nodes.forEach(n=>n.canvas=null);
+  postEdit(editType:string){
+    let cloned :WorkflowModel= _.cloneDeep(this.model);
     while(this.undoStack.length>this.undoStackIndex+1){
       this.undoStack.pop();
     }
-    this.undoStack.push(cloned);
+    this.undoStack.push({desc:editType,model:cloned});
     this.undoStackIndex=this.undoStack.length-1;
   }
 
   undo(){
     if(this.undoStackIndex>0){
       this.undoStackIndex=this.undoStackIndex-1;
-      let peekModel = _.cloneDeep(this.undoStack[this.undoStackIndex]);
-      peekModel.nodes.forEach(n=>n.canvas=this);
+      let peekModel = _.cloneDeep(this.undoStack[this.undoStackIndex].model);
       this.model=peekModel;
     }
   }
   redo(){
     if(this.undoStackIndex<this.undoStack.length-1){
       this.undoStackIndex=this.undoStackIndex+1;
-      let peekModel = _.cloneDeep(this.undoStack[this.undoStackIndex]);
-      peekModel.nodes.forEach(n=>n.canvas=this);
+      let peekModel = _.cloneDeep(this.undoStack[this.undoStackIndex].model);
       this.model=peekModel;
     }
   }
   copy(){
-    console.log("copy request")
+    this.putSelectionOnClipboard()
   }
   paste(){
-    console.log("paste request")
+    if( this.clipBoard ){
+      this.model.nodes.forEach(n=>n.selected=false)
+      this.model.edges.forEach(e=>e.selected=false)
+      let clip = _.cloneDeep(this.clipBoard)
+      clip.nodes.forEach(n=>{
+        let newId = nextId();
+        let oldId = n.id;
+        n.id = newId;
+        clip.edges.forEach(e=>{
+          if(e.sourceId==oldId) e.sourceId = newId;
+          if(e.targetId==oldId) e.targetId = newId;
+        })
+      })
+      clip.nodes.forEach(n=>{
+        this.model.nodes.push(n);
+      })
+      clip.edges.forEach(e=>{
+        this.model.edges.push(e);
+      })
+      this.postEdit("PASTE")
+    }
   }
   cut(){
-    console.log("cut request")
+    this.putSelectionOnClipboard()
+    this.delete();
   }
   delete(){
-    console.log("delete request")
+    const nodes :Array<WorkflowNode> = this.model.nodes.filter(n=>n.selected)
+    const edges :Array<WorkflowEdge> = this.model.edges.filter(e=>e.selected)
+    edges.forEach(e=>{
+      let idx = this.model.edges.indexOf(e);
+      if(idx != -1 ) this.model.edges.splice(idx,1) 
+    })
+    nodes.forEach(n=>{
+      let idx = this.model.nodes.indexOf(n);
+      if(idx != -1 ) this.model.nodes.splice(idx,1) 
+    })
+    const edgesToDelete = this.model.edges.filter(e=>!(this.model.nodes.find(n=>n.id==e.sourceId)&&this.model.nodes.find(n=>n.id==e.targetId)));
+    edgesToDelete.forEach(e=>{
+      let idx = this.model.edges.indexOf(e);
+      if(idx != -1 ) this.model.edges.splice(idx,1)
+    })
+    this.postEdit("DELETE");
   }
+
+  putSelectionOnClipboard(){
+    const nodes :Array<WorkflowNode> = _.cloneDeep( this.model.nodes.filter(n=>n.selected))
+    const edges :Array<WorkflowEdge> = _.cloneDeep( this.model.edges.filter(e=>e.selected))
+    const edgesToDelete = edges.filter(e=>!(nodes.find(n=>n.id==e.sourceId)&&nodes.find(n=>n.id==e.targetId)));
+    edgesToDelete.forEach(e=>{
+      let idx = edges.indexOf(e);
+      if(idx != -1 ) edges.splice(idx,1)
+    })
+    if(nodes.length!=0||edges.length!=0){
+      this.clipBoard = new WorkflowModel(nodes,edges);
+    }
+  }
+}
+
+var nodeId
+
+export class UndoEntry{
+  constructor(public desc:string,public model:WorkflowModel){}
 }
 
 export class WorkflowModel{
@@ -269,11 +326,15 @@ export class DirectionalHit {
 
 const MIN_DIMENSION: number = 20
 
+var idGen = 0;
+function nextId() : number {
+  idGen = idGen + 1;
+  return idGen;
+}
+
 export abstract class WorkflowNode {
 
-  selected: boolean;
-
-  constructor(public canvas: WorkflowCanvasComponent, public x:number, public y: number ){}
+  constructor(public id: number, public x:number, public y: number, public selected: boolean = true ){}
 
   abstract containsPoint(x:number,y:number):boolean
   abstract isInsideRect(x0:number,y0:number,x1:number,y1:number):boolean
@@ -297,35 +358,35 @@ export abstract class WorkflowNode {
   abstract getWy(): number;
   abstract getNWy(): number;
   
-  isSelected():boolean{ return this.selected && !this.canvas.isSelecting; }
-  isCanvasConnectionHit(direction:Direction):boolean{ 
-    return (this.canvas.sourceHit != null && this.canvas.sourceHit.node == this && this.canvas.sourceHit.direction==direction)  
-    || (this.canvas.targetHit != null && this.canvas.targetHit.node == this && this.canvas.targetHit.direction==direction)
+  isSelected(canvas: WorkflowCanvasComponent):boolean{ return this.selected && !canvas.isSelecting; }
+  isCanvasConnectionHit(canvas: WorkflowCanvasComponent,direction:Direction):boolean{ 
+    return (canvas.sourceHit != null && canvas.sourceHit.node == this && canvas.sourceHit.direction==direction)  
+    || (canvas.targetHit != null && canvas.targetHit.node == this && canvas.targetHit.direction==direction)
   }
 
-  showNorthConnection(): boolean {
-    return this.isCanvasConnectionHit(Direction.NORTH);
+  showNorthConnection(canvas: WorkflowCanvasComponent): boolean {
+    return this.isCanvasConnectionHit(canvas,Direction.NORTH);
   }
-  showNorthEastConnection(): boolean {
-    return this.isCanvasConnectionHit(Direction.NORTH_EAST);
+  showNorthEastConnection(canvas: WorkflowCanvasComponent): boolean {
+    return this.isCanvasConnectionHit(canvas,Direction.NORTH_EAST);
   }
-  showEastConnection(): boolean {
-    return this.isCanvasConnectionHit(Direction.EAST);
+  showEastConnection(canvas: WorkflowCanvasComponent): boolean {
+    return this.isCanvasConnectionHit(canvas,Direction.EAST);
   }
-  showSouthEastConnection(): boolean {
-    return this.isCanvasConnectionHit(Direction.SOUTH_EAST);
+  showSouthEastConnection(canvas: WorkflowCanvasComponent): boolean {
+    return this.isCanvasConnectionHit(canvas,Direction.SOUTH_EAST);
   }
-  showSouthConnection(): boolean {
-    return this.isCanvasConnectionHit(Direction.SOUTH);
+  showSouthConnection(canvas: WorkflowCanvasComponent): boolean {
+    return this.isCanvasConnectionHit(canvas,Direction.SOUTH);
   }
-  showSouthWestConnection(): boolean {
-    return this.isCanvasConnectionHit(Direction.SOUTH_WEST);
+  showSouthWestConnection(canvas: WorkflowCanvasComponent): boolean {
+    return this.isCanvasConnectionHit(canvas,Direction.SOUTH_WEST);
   }
-  showWestConnection(): boolean {
-    return this.isCanvasConnectionHit(Direction.WEST);
+  showWestConnection(canvas: WorkflowCanvasComponent): boolean {
+    return this.isCanvasConnectionHit(canvas,Direction.WEST);
   }
-  showNorthWestConnection(): boolean {
-    return this.isCanvasConnectionHit(Direction.NORTH_WEST);
+  showNorthWestConnection(canvas: WorkflowCanvasComponent): boolean {
+    return this.isCanvasConnectionHit(canvas,Direction.NORTH_WEST);
   }
 
   containsPointResize(x:number,y:number):DirectionalHit{
@@ -411,8 +472,8 @@ export abstract class WorkflowNode {
 
 export class RectWorkflowNode extends WorkflowNode {
 
-  constructor(canvas: WorkflowCanvasComponent, x:number, y: number, public width: number, public height: number ){
-    super(canvas,x,y)
+  constructor(x:number, y: number, public width: number, public height: number ){
+    super(nextId(),x,y)
   }
 
   containsPoint(x:number,y:number):boolean{
@@ -519,8 +580,8 @@ export class RectWorkflowNode extends WorkflowNode {
 
 export class CircleWorkflowNode extends WorkflowNode {
 
-  constructor(canvas: WorkflowCanvasComponent, x:number, y: number, public radius: number ){
-    super(canvas,x,y)
+  constructor(x:number, y: number, public radius: number ){
+    super(nextId(),x,y)
   }
 
   containsPoint(x:number,y:number):boolean{
@@ -561,8 +622,8 @@ export class CircleWorkflowNode extends WorkflowNode {
 
 export class DiamondWorkflowNode extends WorkflowNode {
 
-  constructor(canvas: WorkflowCanvasComponent, x:number, y: number, public width: number, public height: number ){
-    super(canvas, x,y)
+  constructor(x:number, y: number, public width: number, public height: number ){
+    super(nextId(), x,y)
   }
 
   containsPoint(x:number,y:number):boolean{
@@ -650,13 +711,21 @@ export class DiamondWorkflowNode extends WorkflowNode {
 }
 
 export class WorkflowEdge {
-  constructor( public source: DirectionalHit, public target: DirectionalHit ){}
-
-  connectionPath():string{
-    let x0 = this.source.node.getX(this.source.direction);
-    let y0 = this.source.node.getY(this.source.direction);
-    let x1 = this.target.node.getX(this.target.direction);
-    let y1 = this.target.node.getY(this.target.direction);
+  constructor(
+    public sourceId:number, 
+    public sourceDirection: Direction,
+    public targetId: number, 
+    public targetDirection: Direction,
+    public selected : boolean = true
+    ){}
+  
+  connectionPath(canvas:WorkflowCanvasComponent):string{
+    let source = canvas.model.nodes.find(n=>n.id == this.sourceId)
+    let target = canvas.model.nodes.find(n=>n.id == this.targetId)
+    let x0 = source.getX(this.sourceDirection);
+    let y0 = source.getY(this.sourceDirection);
+    let x1 = target.getX(this.targetDirection);
+    let y1 = target.getY(this.targetDirection);
     return `M ${x0} ${y0} L ${x1} ${y1}`
   }
 }

@@ -1,5 +1,5 @@
-import { Component, OnInit, Input } from '@angular/core';
-import { CircleWorkflowNode } from '../workflow-canvas.component';
+import { Component, Input } from '@angular/core';
+import { CircleWorkflowNode, WorkflowCanvasComponent } from '../workflow-canvas.component';
 
 @Component({
   selector: '[app-workflow-terminator]',
@@ -9,6 +9,7 @@ import { CircleWorkflowNode } from '../workflow-canvas.component';
 export class WorkflowTerminatorComponent {
 
   @Input() node : CircleWorkflowNode;
+  @Input() canvas : WorkflowCanvasComponent;
 
   constructor() { 
   }

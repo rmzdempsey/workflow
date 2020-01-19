@@ -81,10 +81,9 @@
 
   <svg:g *ngFor="let node of model.nodes">
     
-
-    <svg:g app-workflow-task [node]="node" *ngIf="node.constructor.name === 'RectWorkflowNode' "></svg:g>
-    <svg:g app-workflow-terminator [node]="node" *ngIf="node.constructor.name === 'CircleWorkflowNode' "></svg:g>
-    <svg:g app-workflow-decision [node]="node" *ngIf="node.constructor.name === 'DiamondWorkflowNode' "></svg:g>
+    <svg:g app-workflow-task [node]="node" [canvas]="this" *ngIf="node.constructor.name === 'RectWorkflowNode' "></svg:g>
+    <svg:g app-workflow-terminator [node]="node" [canvas]="this" *ngIf="node.constructor.name === 'CircleWorkflowNode' "></svg:g>
+    <svg:g app-workflow-decision [node]="node" [canvas]="this" *ngIf="node.constructor.name === 'DiamondWorkflowNode' "></svg:g>
 
     <svg:g *ngIf="isSelecting">
       <svg:rect [attr.x]="getSelectionStartX()" [attr.y]="getSelectionStartY()" 
@@ -100,7 +99,7 @@
   </svg:g>
   
   <svg:g *ngFor="let edge of model.edges">
-    <svg:path [attr.d]="edge.connectionPath()"
+    <svg:path [attr.d]="edge.connectionPath(this)"
         [attr.class]="'connected'" marker-end="url(#arrow)"></svg:path>
   </svg:g>
 

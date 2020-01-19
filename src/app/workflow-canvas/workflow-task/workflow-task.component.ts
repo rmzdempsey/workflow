@@ -1,5 +1,5 @@
-import { Component, OnInit, Input } from '@angular/core';
-import { RectWorkflowNode } from '../workflow-canvas.component';
+import { Component, Input } from '@angular/core';
+import { RectWorkflowNode, WorkflowCanvasComponent } from '../workflow-canvas.component';
 
 @Component({
   selector: '[app-workflow-task]',
@@ -9,6 +9,7 @@ import { RectWorkflowNode } from '../workflow-canvas.component';
 export class WorkflowTaskComponent {
 
   @Input() node : RectWorkflowNode;
+  @Input() canvas : WorkflowCanvasComponent;
 
   constructor() { 
   }
