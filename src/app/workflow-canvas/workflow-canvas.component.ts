@@ -102,6 +102,7 @@ export class WorkflowCanvasComponent implements OnInit, AfterViewInit {
 
     if(!hit){
       this.model.nodes.forEach(n=>n.selected=false);
+      this.model.edges.forEach(e=>e.selected=false);
       this.isSelecting = true;
       this.selectionStartX = e.offsetX;
       this.selectionStartY = e.offsetY;
@@ -114,6 +115,7 @@ export class WorkflowCanvasComponent implements OnInit, AfterViewInit {
       this.startDragY = e.offsetY;
       if(!hit.selected){
         this.model.nodes.forEach(n=>n.selected=false);
+        this.model.edges.forEach(n=>n.selected=false);
         hit.selected = true;
       }
       hit.selected = true;
@@ -166,6 +168,8 @@ export class WorkflowCanvasComponent implements OnInit, AfterViewInit {
       this.selectionEndX = e.offsetX;
       this.selectionEndY = e.offsetY
       this.model.nodes.filter(n=> n.isInsideRect(this.selectionStartX, this.selectionStartY, e.offsetX,e.offsetY))
+        .forEach(n=>n.selected=true)
+      this.model.edges.filter(ee=> ee.isInsideRect(this,this.selectionStartX, this.selectionStartY, e.offsetX,e.offsetY))
         .forEach(n=>n.selected=true)
     }
     else{
@@ -242,9 +246,11 @@ export class WorkflowCanvasComponent implements OnInit, AfterViewInit {
         })
       })
       clip.nodes.forEach(n=>{
+        n.selected=true;
         this.model.nodes.push(n);
       })
       clip.edges.forEach(e=>{
+        e.selected=true;
         this.model.edges.push(e);
       })
       this.postEdit("PASTE")
@@ -312,6 +318,9 @@ class Utils {
     const dx = cx - x;
     const dy = cy - y;
     return r >= Math.hypot(dx,dy);
+  }
+  static rectContainsPoint(rx:number, ry:number, rw:number, rh: number, x:number, y:number): boolean{
+      return x >= rx && x <= (rx + rw) && y >= ry && y<(ry+rh)
   }
 }
 
@@ -477,7 +486,7 @@ export class RectWorkflowNode extends WorkflowNode {
   }
 
   containsPoint(x:number,y:number):boolean{
-    return x >= this.x && x <= (this.x + this.width) && y >= this.y && y<(this.y+this.height)
+    return Utils.rectContainsPoint(this.x,this.y,this.width,this.height,x,y)
   }
 
   isInsideRect(x0:number,y0:number,x1:number,y1:number):boolean{
@@ -727,5 +736,15 @@ export class WorkflowEdge {
     let x1 = target.getX(this.targetDirection);
     let y1 = target.getY(this.targetDirection);
     return `M ${x0} ${y0} L ${x1} ${y1}`
+  }
+
+  isInsideRect(canvas:WorkflowCanvasComponent,x:number,y:number,x1:number,y1:number):boolean{
+    let source = canvas.model.nodes.find(n=>n.id == this.sourceId)
+    let target = canvas.model.nodes.find(n=>n.id == this.targetId)
+    let x00 = source.getX(this.sourceDirection);
+    let y00 = source.getY(this.sourceDirection);
+    let x11 = target.getX(this.targetDirection);
+    let y11 = target.getY(this.targetDirection);
+    return Utils.rectContainsPoint(x,y,x1,y1,x00,y00) && Utils.rectContainsPoint(x,y,x1,y1,x11,y11)
   }
 }
