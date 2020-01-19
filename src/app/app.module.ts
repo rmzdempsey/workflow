@@ -8,6 +8,7 @@ import { WorkflowTaskComponent } from './workflow-canvas/workflow-task/workflow-
 import { WorkflowTerminatorComponent } from './workflow-canvas/workflow-terminator/workflow-terminator.component';
 import { WorkflowDecisionComponent } from './workflow-canvas/workflow-decision/workflow-decision.component';
 import { FlexLayoutModule } from '@angular/flex-layout';
+import { WorkflowConnectorComponent } from './workflow-canvas/workflow-connector/workflow-connector.component';
 
 @NgModule({
   declarations: [
@@ -15,7 +16,8 @@ import { FlexLayoutModule } from '@angular/flex-layout';
     WorkflowCanvasComponent,
     WorkflowTaskComponent,
     WorkflowTerminatorComponent,
-    WorkflowDecisionComponent
+    WorkflowDecisionComponent,
+    WorkflowConnectorComponent
   ],
   imports: [
     BrowserModule,

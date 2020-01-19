@@ -728,16 +728,6 @@ export class WorkflowEdge {
     public selected : boolean = true
     ){}
   
-  connectionPath(canvas:WorkflowCanvasComponent):string{
-    let source = canvas.model.nodes.find(n=>n.id == this.sourceId)
-    let target = canvas.model.nodes.find(n=>n.id == this.targetId)
-    let x0 = source.getX(this.sourceDirection);
-    let y0 = source.getY(this.sourceDirection);
-    let x1 = target.getX(this.targetDirection);
-    let y1 = target.getY(this.targetDirection);
-    return `M ${x0} ${y0} L ${x1} ${y1}`
-  }
-
   isInsideRect(canvas:WorkflowCanvasComponent,x:number,y:number,x1:number,y1:number):boolean{
     let source = canvas.model.nodes.find(n=>n.id == this.sourceId)
     let target = canvas.model.nodes.find(n=>n.id == this.targetId)

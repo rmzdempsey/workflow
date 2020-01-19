@@ -99,8 +99,7 @@
   </svg:g>
   
   <svg:g *ngFor="let edge of model.edges">
-    <svg:path [attr.d]="edge.connectionPath(this)"
-        [attr.class]="'connected'" marker-end="url(#arrow)"></svg:path>
+    <svg:g app-workflow-connector [edge]="edge" [canvas]="this"></svg:g>
   </svg:g>
 
 </svg:svg>
