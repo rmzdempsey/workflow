@@ -1,4 +1,5 @@
 import { Component, OnInit, HostListener, AfterViewInit } from '@angular/core';
+import * as _ from "lodash";
 
 @Component({
   selector: 'app-workflow-canvas',
@@ -10,6 +11,8 @@ export class WorkflowCanvasComponent implements OnInit, AfterViewInit {
   constructor() { }
 
   model : WorkflowModel;
+  undoStack: Array<WorkflowModel> = [];
+  undoStackIndex: number = -1;
 
   isSelecting: boolean;
   isDragging: boolean;
@@ -54,10 +57,12 @@ export class WorkflowCanvasComponent implements OnInit, AfterViewInit {
     this.model.nodes.forEach(n=>n.selected=false);
     this.model.nodes.push(n)
     n.selected = true
+    this.postEdit()
   }
 
   ngOnInit() {
     this.model=new WorkflowModel();
+    this.postEdit();
   }
 
   @HostListener("window:resize", [])
@@ -115,9 +120,11 @@ export class WorkflowCanvasComponent implements OnInit, AfterViewInit {
   onPointerUp(e:PointerEvent){
     if( this.sourceHit && this.targetHit ){
       this.model.edges.push(new WorkflowEdge(this.sourceHit,this.targetHit))
+      this.postEdit()
     }
     else if( this.isDragging ){
       (e.srcElement as HTMLElement).releasePointerCapture(e.pointerId);
+      this.postEdit()
     }
     this.isDragging = false;
     this.isSelecting = false;
@@ -189,11 +196,31 @@ export class WorkflowCanvasComponent implements OnInit, AfterViewInit {
     return `M ${this.sourceHit.x} ${this.sourceHit.y} L ${this.connectingX} ${this.connectingY}`
   }
 
+  postEdit(){
+    let cloned = _.cloneDeep(this.model);
+    cloned.nodes.forEach(n=>n.canvas=null);
+    while(this.undoStack.length>this.undoStackIndex+1){
+      this.undoStack.pop();
+    }
+    this.undoStack.push(cloned);
+    this.undoStackIndex=this.undoStack.length-1;
+  }
+
   undo(){
-    console.log("undo request")
+    if(this.undoStackIndex>0){
+      this.undoStackIndex=this.undoStackIndex-1;
+      let peekModel = _.cloneDeep(this.undoStack[this.undoStackIndex]);
+      peekModel.nodes.forEach(n=>n.canvas=this);
+      this.model=peekModel;
+    }
   }
   redo(){
-    console.log("redo request")
+    if(this.undoStackIndex<this.undoStack.length-1){
+      this.undoStackIndex=this.undoStackIndex+1;
+      let peekModel = _.cloneDeep(this.undoStack[this.undoStackIndex]);
+      peekModel.nodes.forEach(n=>n.canvas=this);
+      this.model=peekModel;
+    }
   }
   copy(){
     console.log("copy request")
@@ -241,6 +268,7 @@ export class DirectionalHit {
 }
 
 const MIN_DIMENSION: number = 20
+
 export abstract class WorkflowNode {
 
   selected: boolean;
@@ -271,8 +299,8 @@ export abstract class WorkflowNode {
   
   isSelected():boolean{ return this.selected && !this.canvas.isSelecting; }
   isCanvasConnectionHit(direction:Direction):boolean{ 
-    return (this.canvas.sourceHit != null && this.canvas.sourceHit.node === this && this.canvas.sourceHit.direction==direction)  
-    || (this.canvas.targetHit != null && this.canvas.targetHit.node === this && this.canvas.targetHit.direction==direction)
+    return (this.canvas.sourceHit != null && this.canvas.sourceHit.node == this && this.canvas.sourceHit.direction==direction)  
+    || (this.canvas.targetHit != null && this.canvas.targetHit.node == this && this.canvas.targetHit.direction==direction)
   }
 
   showNorthConnection(): boolean {
