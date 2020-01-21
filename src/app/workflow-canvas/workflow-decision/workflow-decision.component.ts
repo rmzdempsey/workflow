@@ -1,5 +1,6 @@
 import { Component, Input } from '@angular/core';
-import { DiamondWorkflowNode, WorkflowCanvasComponent } from '../workflow-canvas.component';
+import { WorkflowCanvasComponent } from '../workflow-canvas.component';
+import { DiamondWorkflowNode,Direction } from '../workflow.model';
 
 @Component({
   selector: '[app-workflow-decision]',
