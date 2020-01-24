@@ -85,13 +85,13 @@
     <svg:g app-workflow-terminator [node]="node" [canvas]="this" *ngIf="node.constructor.name === 'CircleWorkflowNode' "></svg:g>
     <svg:g app-workflow-decision [node]="node" [canvas]="this" *ngIf="node.constructor.name === 'DiamondWorkflowNode' "></svg:g>
 
-    <svg:g *ngIf="isSelecting">
-      <svg:rect [attr.x]="getSelectionStartX()" [attr.y]="getSelectionStartY()" 
-        [attr.width]="getSelectionWidth()" [attr.height]="getSelectionHeight()" 
+    <svg:g *ngIf="isGroupSelecting()">
+      <svg:rect [attr.x]="getGroupSelectionStartX()" [attr.y]="getGroupSelectionStartY()" 
+        [attr.width]="getGroupSelectionWidth()" [attr.height]="getGroupSelectionHeight()" 
         [attr.class]="'is_selecting'" ></svg:rect>
     </svg:g>
 
-    <svg:g *ngIf="isConnecting">
+    <svg:g *ngIf="isConnecting()">
       <svg:path [attr.d]="connectionPath()"
         [attr.class]="'connecting'" marker-end="url(#arrow)"></svg:path>
     </svg:g>

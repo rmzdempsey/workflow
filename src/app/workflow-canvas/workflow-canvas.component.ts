@@ -1,6 +1,7 @@
 import { Component, OnInit, HostListener, AfterViewInit } from '@angular/core';
 import * as _ from "lodash";
 import { nextId, Utils, WorkflowModel, UndoEntry, DirectionalHit, RectWorkflowNode, DiamondWorkflowNode, CircleWorkflowNode, WorkflowNode, WorkflowEdge } from './workflow.model';
+import { THIS_EXPR } from '@angular/compiler/src/output/output_ast';
 
 @Component({
   selector: 'app-workflow-canvas',
@@ -16,20 +17,42 @@ export class WorkflowCanvasComponent implements OnInit, AfterViewInit {
   undoStack: Array<UndoEntry> = [];
   undoStackIndex: number = -1;
 
-  isSelecting: boolean;
-  isDragging: boolean;
-  isConnecting: boolean;
-  resizeHit: DirectionalHit;
-  sourceHit: DirectionalHit;
-  targetHit: DirectionalHit;
-  selectionStartX: number;
-  selectionStartY: number;
-  startDragX: number;
-  startDragY: number;
-  selectionEndX: number;
-  selectionEndY: number;
-  connectingX: number;
-  connectingY: number;
+  _isGroupSelecting: boolean = false;
+  _groupSelectStartX: number;
+  _groupSelectStartY: number;
+  _groupSelectEndX: number;
+  _groupSelectEndY: number;
+
+  _currentSourceConnectionHover: DirectionalHit;
+  _currentTargetConnectionHover: DirectionalHit;
+  _isConnecting: boolean;
+  _connectingStartX: number;
+  _connectingStartY: number;
+  _connectingEndX: number;
+  _connectingEndY: number;
+
+  _isResizingNode: boolean = false;
+  _currentResizeHandle: DirectionalHit;
+
+  _isDragging: boolean = false;
+  // _resizeStartX: number;
+  // _resizeStartY: number;
+  // _resizeEndX: number;
+  // _resizeEndY: number;
+
+  // isDragging: boolean;
+  // isConnecting: boolean;
+  // resizeHit: DirectionalHit;
+  // sourceHit: DirectionalHit;
+  // targetHit: DirectionalHit;
+  // selectionStartX: number;
+  // selectionStartY: number;
+  // startDragX: number;
+  // startDragY: number;
+  // selectionEndX: number;
+  // selectionEndY: number;
+  // connectingX: number;
+  // connectingY: number;
   
   newTask(){
     this.addNode( new RectWorkflowNode(
@@ -82,142 +105,355 @@ export class WorkflowCanvasComponent implements OnInit, AfterViewInit {
   }
 
   onPointerDown(e:PointerEvent){
-    this.isSelecting = false;
-    this.isDragging = false;
-    this.resizeHit = null;
+    // this.isSelecting = false;
+    // this.isDragging = false;
+    // this.resizeHit = null;
 
-    if(this.sourceHit){
-      this.isConnecting=true;
-      this.connectingX=this.sourceHit.x;
-      this.connectingY=this.sourceHit.y;
-      return
+    const x = e.offsetX;
+    const y = e.offsetY;
+
+    if(this.isOverSourceConnectionPointOnlyIfNodeNotSelected(x,y)){
+      this.selectSourceConnectionPoint();
     }
-
-    let resizeHits:Array<WorkflowNode> = this.model.nodes.slice().reverse().filter(n=>n.containsPointResize(e.offsetX,e.offsetY))
-    if(resizeHits.length>0){
-      this.resizeHit = resizeHits[0].containsPointResize(e.offsetX,e.offsetY)
-      return
+    else if( this.isOverNodeResizePointOnlyIfNodeSelected(x,y) ){
+      this.startResizeNode(x,y);
     }
-
-    let hitN : WorkflowNode = this.model.nodes.slice().reverse().find(n=>n.containsPoint(e.offsetX,e.offsetY))
-    let hitE : WorkflowEdge = this.model.edges.slice().reverse().find(n=>n.containsPoint(this,e.offsetX,e.offsetY))
-
-    console.log('hit edge', hitE)
-
-    if(!hitN && !hitE){
-      this.model.nodes.forEach(n=>n.selected=false);
-      this.model.edges.forEach(e=>e.selected=false);
-      this.isSelecting = true;
-      this.selectionStartX = e.offsetX;
-      this.selectionStartY = e.offsetY;
-      this.selectionEndX = e.offsetX;
-      this.selectionEndY = e.offsetY;
+    else if( this.isOverNodeOnlyIfNodeNotSelected(x,y) ){
+      this.selectNode(x,y);
+    }
+    else if( this.isOverNodeOnlyIfInSelection(x,y) ){
+      // enough to start dragging
+    }
+    else if( this.isOverEdgeJunctionPoint() ){
+      this.selectEdgeJunctionPoint()
+    }
+    else if( this.isOverEdge() ){
+      this.selectEdge(x,y);
     }
     else{
-      this.isDragging = true;
-      this.startDragX = e.offsetX;
-      this.startDragY = e.offsetY;
-      if(hitN){
-        if(!hitN.selected){
-          this.model.nodes.forEach(n=>n.selected=false);
-          this.model.edges.forEach(n=>n.selected=false);
-          hitN.selected = true;
-        }
-        hitN.selected = true;
-        (e.srcElement as HTMLElement).setPointerCapture(e.pointerId);
-      }
-      if(hitE){
-        if(!hitE.selected){
-          this.model.nodes.forEach(n=>n.selected=false);
-          this.model.edges.forEach(n=>n.selected=false);
-          hitE.selected = true;
-        }
-        hitE.selected = true;
-        //(e.srcElement as HTMLElement).setPointerCapture(e.pointerId);
-      }
+      this.startGroupSelect(x,y); 
     }
+
+    (e.srcElement as HTMLElement).setPointerCapture(e.pointerId);
+    
+    //{
+
+      // let resizeHits:Array<WorkflowNode> = this.model.nodes.slice().reverse().filter(n=>n.containsPointResize(e.offsetX,e.offsetY))
+      // if(resizeHits.length>0){
+      //   this.resizeHit = resizeHits[0].containsPointResize(e.offsetX,e.offsetY)
+      //   return
+      // }
+
+      // let hitN : WorkflowNode = this.model.nodes.slice().reverse().find(n=>n.containsPoint(e.offsetX,e.offsetY))
+      // let hitE : WorkflowEdge = this.model.edges.slice().reverse().find(n=>n.containsPoint(this,e.offsetX,e.offsetY))
+
+      // console.log('hit edge', hitE)
+
+      // if(!hitN && !hitE){
+      //   this.model.nodes.forEach(n=>n.selected=false);
+      //   this.model.edges.forEach(e=>e.selected=false);
+      //   this.isSelecting = true;
+      //   this.selectionStartX = e.offsetX;
+      //   this.selectionStartY = e.offsetY;
+      //   this.selectionEndX = e.offsetX;
+      //   this.selectionEndY = e.offsetY;
+      // }
+      // else{
+      //   this.isDragging = true;
+      //   this.startDragX = e.offsetX;
+      //   this.startDragY = e.offsetY;
+      //   if(hitN){
+      //     if(!hitN.selected){
+      //       this.model.nodes.forEach(n=>n.selected=false);
+      //       this.model.edges.forEach(n=>n.selected=false);
+      //       hitN.selected = true;
+      //     }
+      //     hitN.selected = true;
+      //     (e.srcElement as HTMLElement).setPointerCapture(e.pointerId);
+      //   }
+      //   if(hitE){
+      //     if(!hitE.selected){
+      //       this.model.nodes.forEach(n=>n.selected=false);
+      //       this.model.edges.forEach(n=>n.selected=false);
+      //       hitE.selected = true;
+      //     }
+      //     hitE.selected = true;
+      //     //(e.srcElement as HTMLElement).setPointerCapture(e.pointerId);
+      //   }
+      // }
+   // }
   }
 
   onPointerUp(e:PointerEvent){
-    if( this.sourceHit && this.targetHit ){
-      this.model.edges.push(new WorkflowEdge(this.sourceHit.node.id,this.sourceHit.direction,this.targetHit.node.id,this.targetHit.direction))
+    
+    if(this.isGroupSelecting()){
+      this.stopGroupSelect(); 
+    }
+    else if(this.isResizingNode()){
+      this.stopResizeNode();
+      this.postEdit("RESIZE")
+    }
+    else if(this.isConnecting()){
+      this.stopConnecting();
       this.postEdit("NEW EDGE")
     }
-    else if( this.isDragging ){
-      (e.srcElement as HTMLElement).releasePointerCapture(e.pointerId);
-      if( this.startDragX != e.offsetX || this.startDragY != e.offsetY )
-        this.postEdit("MOVE")
+    else if(this.isDragging()){
+      this.stopDragging();
+      this.postEdit("MOVE")
     }
-    this.isDragging = false;
-    this.isSelecting = false;
-    this.isConnecting = false;
-    this.resizeHit = null;
-    this.sourceHit=null;
-    this.targetHit=null;
+
+    (e.srcElement as HTMLElement).releasePointerCapture(e.pointerId);
+    // if( this.sourceHit && this.targetHit ){
+    //   this.model.edges.push(new WorkflowEdge(this.sourceHit.node.id,this.sourceHit.direction,this.targetHit.node.id,this.targetHit.direction))
+    //   this.postEdit("NEW EDGE")
+    // }
+    // else if( this.isDragging ){
+    //   (e.srcElement as HTMLElement).releasePointerCapture(e.pointerId);
+    //   if( this.startDragX != e.offsetX || this.startDragY != e.offsetY )
+    //     this.postEdit("MOVE")
+    // }
+    // this.isDragging = false;
+    // this.isSelecting = false;
+    // this.isConnecting = false;
+    // this.resizeHit = null;
+    // this.sourceHit=null;
+    // this.targetHit=null;
   }
 
   onPointerMove(e:PointerEvent){
-    this.targetHit = null;
-    if(this.isConnecting){
-      this.connectingX=e.offsetX;
-      this.connectingY=e.offsetY;
-      let targetHits:Array<WorkflowNode> = this.model.nodes.slice().reverse().filter(n=>n.containsPointConnection(e.offsetX,e.offsetY)).filter(n=>n.id!=this.sourceHit.node.id)
-      if(targetHits.length>0){
-        this.targetHit = targetHits[0].containsPointConnection(e.offsetX,e.offsetY);
-        return
+    const x = e.offsetX;
+    const y = e.offsetY;
+
+    if( this.isGroupSelecting() ){
+      this.updateGroupSelect(x,y)
+    }
+    else if( this.isConnecting() ){
+      this.updateConnection(x,y)
+      if(this.isOverTargetConnectionPoint(x,y)){
+        // should render target handle
       }
-      return;
     }
-    this.sourceHit = null;
-    if( this.resizeHit ){
-      this.resizeHit.node.resize(this.resizeHit.direction,e.movementX,e.movementY)
+    else if(this.isOverSourceConnectionPointOnlyIfNodeNotSelected(x,y)){
+      // should render source handle
     }
-    else if( this.isDragging ){
-      this.model.nodes.filter(n=>n.selected)
-      .forEach(n=>{
-        n.x = n.x + e.movementX
-        n.y = n.y + e.movementY
+    else if(this.isResizingNode()){
+      this.updateResizeNode(e.movementX,e.movementY);
+    }
+    else if( e.buttons == 1 ){ // left mouse button down
+      this.updateDragIfSelection(e.movementX,e.movementY);
+    }
+    // this.targetHit = null;
+    // if(this.isConnecting){
+    //   this.connectingX=e.offsetX;
+    //   this.connectingY=e.offsetY;
+    //   let targetHits:Array<WorkflowNode> = this.model.nodes.slice().reverse().filter(n=>n.containsPointConnection(e.offsetX,e.offsetY)).filter(n=>n.id!=this.sourceHit.node.id)
+    //   if(targetHits.length>0){
+    //     this.targetHit = targetHits[0].containsPointConnection(e.offsetX,e.offsetY);
+    //     return
+    //   }
+    //   return;
+    // }
+    // this.sourceHit = null;
+    // if( this.resizeHit ){
+    //   this.resizeHit.node.resize(this.resizeHit.direction,e.movementX,e.movementY)
+    // }
+    // else if( this.isDragging ){
+    //   this.model.nodes.filter(n=>n.selected)
+    //   .forEach(n=>{
+    //     n.x = n.x + e.movementX
+    //     n.y = n.y + e.movementY
+    //   })
+    // }
+    // else if( this.isSelecting ){
+    //   this.selectionEndX = e.offsetX;
+    //   this.selectionEndY = e.offsetY
+    //   this.model.nodes.filter(n=> n.isInsideRect(this.selectionStartX, this.selectionStartY, e.offsetX,e.offsetY))
+    //     .forEach(n=>n.selected=true)
+    //   this.model.edges.filter(ee=> ee.isInsideRect(this,this.selectionStartX, this.selectionStartY, e.offsetX,e.offsetY))
+    //     .forEach(n=>n.selected=true)
+    // }
+    // else{
+    //   let sourceHits:Array<WorkflowNode> = this.model.nodes.slice().reverse().filter(n=>n.containsPointConnection(e.offsetX,e.offsetY)).filter(n=>!n.selected)
+    //   if(sourceHits.length>0){
+    //     this.sourceHit = sourceHits[0].containsPointConnection(e.offsetX,e.offsetY);
+    //     return
+    //   }
+    // }
+  }
+
+  isOverSourceConnectionPointOnlyIfNodeNotSelected(x:number,y:number):boolean{
+    this._currentSourceConnectionHover = null;
+    
+    const n = this.model.nodes.slice().reverse().filter(n=>!n.selected).find(n=>n.containsPointConnection(x,y));
+    if( n!= null ){
+      this._currentSourceConnectionHover = n.containsPointConnection(x,y)
+    }
+    
+    return this._currentSourceConnectionHover != null;
+  }
+
+  isOverTargetConnectionPoint(x:number,y:number):boolean{
+    this._currentTargetConnectionHover = null;
+    
+    if( this._currentSourceConnectionHover != null ){
+      const n = this.model.nodes.slice().reverse()
+        .filter(n=>!n.selected && n!=this._currentSourceConnectionHover.node).find(n=>n.containsPointConnection(x,y));
+      if( n!= null ){
+        this._currentTargetConnectionHover = n.containsPointConnection(x,y)
+      }
+    }
+    
+    return this._currentTargetConnectionHover != null;
+  }
+
+  isOverNodeResizePointOnlyIfNodeSelected(x:number,y:number):boolean{
+    return this.model.nodes.slice().reverse().filter(n=>n.selected).find(n=>n.containsPointResize(x,y)) != null;
+  }
+  isResizingNode():boolean{
+    return this._isResizingNode;
+  }
+  startResizeNode(x:number,y:number){
+    this._isResizingNode = true;
+    const resizingNode :WorkflowNode = this.model.nodes.slice().reverse().find(n=>n.containsPointResize(x,y))
+    this._currentResizeHandle = resizingNode.containsPointResize(x,y);
+    console.log('selecting node resize pt')
+  }
+  stopResizeNode(){
+    this._isResizingNode = false;
+    this._currentResizeHandle = null;
+    console.log('stop node resize')
+  }
+  updateResizeNode(dx:number,dy:number){
+    console.log('resizing node', this._currentResizeHandle)
+    this._currentResizeHandle.node.resize(this._currentResizeHandle.direction,dx,dy)
+  }
+
+  isOverNodeOnlyIfNodeNotSelected(x:number,y:number){
+    return this.model.nodes.slice().reverse().filter(n=>!n.selected).find(n=>n.containsPoint(x,y)) != null;
+  }
+  isOverNodeOnlyIfInSelection(x:number,y:number){
+    return this.model.nodes.slice().reverse().filter(n=>n.selected).find(n=>n.containsPoint(x,y)) != null;
+  }
+
+  isOverEdgeJunctionPoint(){
+    return false;
+  }
+
+  isOverEdge(){
+    return false;
+  }
+
+  selectSourceConnectionPoint(){
+    console.log('selecting stc connection pt')
+    this.model.nodes.forEach(n=>n.selected=false)
+    this.model.edges.forEach(e=>e.selected=false)
+    this._isConnecting = true;
+    this._connectingStartX = this._currentSourceConnectionHover.getHandleX();
+    this._connectingStartY = this._currentSourceConnectionHover.getHandleY();
+    this._connectingEndX = this._connectingStartX;
+    this._connectingEndY = this._connectingStartY;
+  }
+  isConnecting():boolean{
+    return this._isConnecting;
+  }
+  updateConnection(x:number,y:number){
+    this._connectingEndX = x;
+    this._connectingEndY = y;
+  }
+  stopConnecting(){
+    this._isConnecting = false;
+    if( this._currentSourceConnectionHover != null && this._currentSourceConnectionHover ){
+      this.model.edges.push(new WorkflowEdge(
+        this._currentSourceConnectionHover.node.id,
+        this._currentSourceConnectionHover.direction,
+        this._currentTargetConnectionHover.node.id,
+        this._currentTargetConnectionHover.direction
+      ))
+    }
+    this._currentSourceConnectionHover = null;
+    this._currentTargetConnectionHover = null;
+  }
+  
+  selectNode(x:number,y:number){
+    console.log('selecting node')
+    this.model.nodes.forEach(n=>n.selected=false)
+    this.model.edges.forEach(e=>e.selected=false)
+    this.model.nodes.slice().reverse().find(n=>n.containsPoint(x,y)).selected=true;
+  }
+  selectEdgeJunctionPoint(){
+    console.log('selecting edge junction pt')
+  }
+  selectEdge(x:number,y:number){
+    this.model.nodes.forEach(n=>n.selected=false)
+    this.model.edges.forEach(e=>e.selected=false)
+    this.model.edges.slice().reverse().find(e=>e.containsPoint(this,x,y)).selected=true;
+    console.log('selecting edge')
+  }
+
+  startGroupSelect(x:number,y:number){
+    console.log('starting group select')
+    this.model.nodes.forEach(n=>n.selected=false);
+    this.model.edges.forEach(e=>e.selected=false);
+    this._isGroupSelecting = true;
+    this._groupSelectStartX = x;
+    this._groupSelectStartY = y;
+    this._groupSelectEndX = x;
+    this._groupSelectEndY = y;
+  }
+  isGroupSelecting():boolean{
+    return this._isGroupSelecting;
+  }
+  stopGroupSelect(){
+    console.log('stopping group select')
+    this._isGroupSelecting = false;
+    this.model.nodes.filter(n=> n.isInsideRect(this._groupSelectStartX, this._groupSelectStartY, this._groupSelectEndX,this._groupSelectEndY))
+        .forEach(n=>n.selected=true)
+      this.model.edges.filter(ee=> ee.isInsideRect(this,this._groupSelectStartX, this._groupSelectStartY, this._groupSelectEndX,this._groupSelectEndY))
+        .forEach(n=>n.selected=true)
+  }
+  updateGroupSelect(x:number,y:number){
+    this._groupSelectEndX = x;
+    this._groupSelectEndY = y;
+  }
+  getGroupSelectionStartX():number{ 
+    return Math.min(this._groupSelectEndX,this._groupSelectStartX);
+  }
+  getGroupSelectionStartY():number{
+    return Math.min(this._groupSelectEndY,this._groupSelectStartY);
+  }
+  getGroupSelectionWidth():number{
+    return Math.abs(this._groupSelectEndX-this._groupSelectStartX);
+  }
+  getGroupSelectionHeight():number{
+    return Math.abs(this._groupSelectEndY-this._groupSelectStartY);
+  }
+
+  updateDragIfSelection(dx:number,dy:number){
+    let selected : Array<WorkflowNode> = this.model.nodes.filter(n=>n.selected);
+    if(selected.length>0){
+      this._isDragging = true;
+      selected.forEach(n=>{
+        n.x=n.x+dx
+        n.y=n.y+dy
       })
     }
-    else if( this.isSelecting ){
-      this.selectionEndX = e.offsetX;
-      this.selectionEndY = e.offsetY
-      this.model.nodes.filter(n=> n.isInsideRect(this.selectionStartX, this.selectionStartY, e.offsetX,e.offsetY))
-        .forEach(n=>n.selected=true)
-      this.model.edges.filter(ee=> ee.isInsideRect(this,this.selectionStartX, this.selectionStartY, e.offsetX,e.offsetY))
-        .forEach(n=>n.selected=true)
-    }
-    else{
-      let sourceHits:Array<WorkflowNode> = this.model.nodes.slice().reverse().filter(n=>n.containsPointConnection(e.offsetX,e.offsetY)).filter(n=>!n.selected)
-      if(sourceHits.length>0){
-        this.sourceHit = sourceHits[0].containsPointConnection(e.offsetX,e.offsetY);
-        return
-      }
-    }
+  }
+  isDragging():boolean{
+    return this._isDragging;
+  }
+  stopDragging(){
+    this._isDragging = false;
   }
 
-  getSelectionStartX():number{
-    if( this.selectionStartX<=this.selectionEndX) return this.selectionStartX;
-    else return this.selectionEndX;
+  getCurrentSourceConnectionHover(){
+    return this._currentSourceConnectionHover;
   }
-
-  getSelectionStartY():number{
-    if( this.selectionStartY<=this.selectionEndY) return this.selectionStartY;
-    else return this.selectionEndY
-  }
-
-  getSelectionWidth():number{
-    let x :Array<number>= Utils.orderValues(this.selectionStartX,this.selectionEndX)
-    return Math.abs(x[1]-x[0]);
-  }
-
-  getSelectionHeight():number{
-    let y :Array<number>= Utils.orderValues(this.selectionStartY,this.selectionEndY)
-    return Math.abs(y[1]-y[0]);
+  getCurrentTargetConnectionHover(){
+    return this._currentTargetConnectionHover;
   }
 
   connectionPath():string{
-    return `M ${this.sourceHit.x} ${this.sourceHit.y} L ${this.connectingX} ${this.connectingY}`
+    return `M ${this._connectingStartX} ${this._connectingStartY} L ${this._connectingEndX} ${this._connectingEndY}`
   }
 
   postEdit(editType:string){

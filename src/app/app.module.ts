@@ -9,11 +9,11 @@ import { WorkflowTerminatorComponent } from './workflow-canvas/workflow-terminat
 import { WorkflowDecisionComponent } from './workflow-canvas/workflow-decision/workflow-decision.component';
 import { FlexLayoutModule } from '@angular/flex-layout';
 import { WorkflowConnectorComponent } from './workflow-canvas/workflow-connector/workflow-connector.component';
+import { WorkflowModule } from './workflow-canvas/workflow.module';
 
 @NgModule({
   declarations: [
     AppComponent,
-    WorkflowCanvasComponent,
     WorkflowTaskComponent,
     WorkflowTerminatorComponent,
     WorkflowDecisionComponent,
@@ -23,6 +23,7 @@ import { WorkflowConnectorComponent } from './workflow-canvas/workflow-connector
     BrowserModule,
     CommonModule,
     FlexLayoutModule,
+    WorkflowModule,
   ],
   providers: [],
   bootstrap: [AppComponent]

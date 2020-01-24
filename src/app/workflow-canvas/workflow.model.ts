@@ -37,6 +37,14 @@ export class UndoEntry{
   
   export class DirectionalHit {
     constructor( public direction : Direction, public node: WorkflowNode, public x:number, public y:number ){}
+
+    getHandleX():number {
+      return this.node.getX(this.direction)
+    }
+
+    getHandleY():number {
+      return this.node.getY(this.direction)
+    }
   }
   
   const MIN_DIMENSION: number = 20
@@ -73,10 +81,13 @@ export class UndoEntry{
     abstract getWy(): number;
     abstract getNWy(): number;
     
-    isSelected(canvas: WorkflowCanvasComponent):boolean{ return this.selected && !canvas.isSelecting; }
+    isSelected(canvas: WorkflowCanvasComponent):boolean{ 
+      return this.selected && !canvas.isGroupSelecting(); 
+    }
     isCanvasConnectionHit(canvas: WorkflowCanvasComponent,direction:Direction):boolean{ 
-      return (canvas.sourceHit != null && canvas.sourceHit.node == this && canvas.sourceHit.direction==direction)  
-      || (canvas.targetHit != null && canvas.targetHit.node == this && canvas.targetHit.direction==direction)
+      return (canvas.getCurrentSourceConnectionHover() != null && canvas.getCurrentSourceConnectionHover().node == this && canvas.getCurrentSourceConnectionHover().direction==direction)  
+      || (canvas.getCurrentTargetConnectionHover() != null && canvas.getCurrentTargetConnectionHover().node == this && canvas.getCurrentTargetConnectionHover().direction==direction)
+      
     }
   
     showNorthConnection(canvas: WorkflowCanvasComponent): boolean {
