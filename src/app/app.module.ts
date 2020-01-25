@@ -14,10 +14,10 @@ import { WorkflowModule } from './workflow-canvas/workflow.module';
 @NgModule({
   declarations: [
     AppComponent,
-    WorkflowTaskComponent,
-    WorkflowTerminatorComponent,
-    WorkflowDecisionComponent,
-    WorkflowConnectorComponent
+    // WorkflowTaskComponent,
+    // WorkflowTerminatorComponent,
+    // WorkflowDecisionComponent,
+    // WorkflowConnectorComponent
   ],
   imports: [
     BrowserModule,

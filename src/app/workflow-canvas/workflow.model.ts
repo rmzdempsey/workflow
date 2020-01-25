@@ -28,7 +28,9 @@ export class UndoEntry{
     static rectContainsPoint(rx:number, ry:number, rw:number, rh: number, x:number, y:number): boolean{
         return x >= rx && x <= (rx + rw) && y >= ry && y<(ry+rh)
     }
-
+    static distanceBetweenPoints(x1:number, y1:number, x2:number, y2:number) :number{
+      return Math.abs(Math.hypot((x2-x1),(y2-y1)))
+    }
     static distanceFromLine(x1:number, y1:number, x2:number, y2:number,x:number, y:number) :number{
 
       let A = x - x1;
@@ -504,24 +506,30 @@ export class UndoEntry{
         
         let d = Utils.distanceFromLine(x0,y0,x1,y1,x,y)
 
-        let xx : Array<number> = Utils.orderValues(x0,x1);
-        let yy : Array<number> = Utils.orderValues(y0,y1);
+        let d0 = Utils.distanceBetweenPoints(x0,y0,x1,y1)
+        let d1 = Utils.distanceBetweenPoints(x0,y0,x,y)
+        let d2 = Utils.distanceBetweenPoints(x,y,x1,y1)
 
-        if(xx[0]==xx[1]){
-          console.log("RMD IS VERT LINE")
-          xx[0] = xx[0]-2;
-          xx[1] = xx[1]+2;
-          console.log("RMD ", xx )
-        }
-        if(yy[0]==yy[1]){
-          yy[0] = yy[0]-2;
-          yy[1] = yy[1]+2;
-        }
+        return d<2 && d1<=d0 && d2<=d0
+    }
 
-        let b = Utils.rectContainsPoint(xx[0],yy[0],xx[1]-xx[0],yy[1]-yy[0],x,y);
-
-      console.log("RMD0", b, d, xx, yy )
-
-        return d<2 && b;
+    getSourceX(canvas:WorkflowCanvasComponent):number{
+      const source = canvas.model.nodes.find(n=>n.id == this.sourceId)
+      return source.getX(this.sourceDirection);
+    }
+    getSourceY(canvas:WorkflowCanvasComponent):number{
+      const source = canvas.model.nodes.find(n=>n.id == this.sourceId)
+      return source.getY(this.sourceDirection);
+    }
+    getTargetX(canvas:WorkflowCanvasComponent):number{
+      const target = canvas.model.nodes.find(n=>n.id == this.targetId)
+      return target.getX(this.targetDirection);
+    }
+    getTargetY(canvas:WorkflowCanvasComponent):number{
+      const target = canvas.model.nodes.find(n=>n.id == this.targetId)
+      return target.getY(this.targetDirection); 
+    }
+    isSelected(canvas: WorkflowCanvasComponent):boolean{ 
+      return this.selected && !canvas.isGroupSelecting(); 
     }
   }

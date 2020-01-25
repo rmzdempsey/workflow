@@ -2,4 +2,20 @@
   [attr.d]="path()" 
   [attr.class]="'connected'" 
   marker-end="url(#arrow)"
+
+  [attr.class]="edge.isSelected(canvas)?'is-selected':'not-selected'"
+  />
+
+  <svg:circle  *ngIf="edge.isSelected(canvas)"
+  [attr.cx]="edge.getSourceX(canvas)" 
+  [attr.cy]="edge.getSourceY(canvas)" 
+  [attr.r]="5" 
+  [attr.class]="'selection-handle'"
+  />
+
+  <svg:circle  *ngIf="edge.isSelected(canvas)"
+  [attr.cx]="edge.getTargetX(canvas)" 
+  [attr.cy]="edge.getTargetY(canvas)" 
+  [attr.r]="5" 
+  [attr.class]="'selection-handle'"
   />

@@ -6,7 +6,7 @@
   
   [attr.class]="node.isSelected(canvas)?'is-selected':'not-selected'"
   />
-  <svg:text [attr.x]="node.x + (node.width/2)" [attr.y]="node.y + (node.height/2)">{{node.id}}</svg:text>
+  <!-- <svg:text [attr.x]="node.x + (node.width/2)" [attr.y]="node.y + (node.height/2)">{{node.id}}</svg:text> -->
 
   <svg:circle  *ngIf="node.isSelected(canvas)"
   [attr.cx]="node.x" 

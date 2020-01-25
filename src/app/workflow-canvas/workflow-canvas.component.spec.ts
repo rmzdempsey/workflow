@@ -293,32 +293,12 @@ fdescribe('WorkflowCanvasComponent', () => {
         expect(component.isOverEdgeNotSelected(150,301)).toBeFalsy()
       });
       it('lineContainsPoint should detect hit over edge', () => {
-        // let d = Utils.distanceFromLine(150,200,150,300,150,250)
-        // expect(d<1).toBeTruthy();
-        // let xx : Array<number> = Utils.orderValues(150,150);
-        // expect(xx[0]==150).toBeTruthy();
-        // expect(xx[1]==150).toBeTruthy();
-        // let yy : Array<number> = Utils.orderValues(200,300);
-        // expect(yy[0]==200).toBeTruthy();
-        // expect(yy[1]==300).toBeTruthy();
         expect(component.model.edges[0].lineContainsPoint(150,200,150,300,150,250)).toBeTruthy()
       });
       it('isOverEdgeNotSelected should detect hit over edge', () => {
         expect(component.isOverEdgeNotSelected(150,250)).toBeTruthy()
       });
       it('isOverEdgeNotSelected should detect hit over edge just to left', () => {
-        // let d = Utils.distanceFromLine(150,200,150,300,149,250)
-        // expect(d<2).toBeTruthy();
-        // let xx : Array<number> = Utils.orderValues(149,150);
-        // expect(xx[0]==149).toBeTruthy();
-        // expect(xx[1]==150).toBeTruthy();
-        // let yy : Array<number> = Utils.orderValues(200,300);
-        // expect(yy[0]==200).toBeTruthy();
-        // expect(yy[1]==300).toBeTruthy();
-        // expect(Utils.rectContainsPoint(xx[0],yy[0],xx[1]-xx[0],yy[1]-yy[0],149,250)).toBeTruthy()
-        // console.log("RMD", JSON.stringify(component.model, null, ' '))
-        // expect(component.model.edges[0].lineContainsPoint(150,200,150,300,149,250)).toBeTruthy()
-        // expect(component.model.edges[0].selected).toBeFalsy()
         expect(component.isOverEdgeNotSelected(148.1,250)).toBeTruthy()
       });
       it('isOverEdgeNotSelected should detect hit over edge just to right', () => {
@@ -326,6 +306,4 @@ fdescribe('WorkflowCanvasComponent', () => {
       });
     });
   });
-
-  
 });
