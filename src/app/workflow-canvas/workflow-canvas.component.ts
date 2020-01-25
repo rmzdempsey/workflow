@@ -127,7 +127,7 @@ export class WorkflowCanvasComponent implements OnInit, AfterViewInit {
     else if( this.isOverEdgeJunctionPoint() ){
       this.selectEdgeJunctionPoint()
     }
-    else if( this.isOverEdge() ){
+    else if( this.isOverEdgeNotSelected(x,y) ){
       this.selectEdge(x,y);
     }
     else{
@@ -339,8 +339,8 @@ export class WorkflowCanvasComponent implements OnInit, AfterViewInit {
     return false;
   }
 
-  isOverEdge(){
-    return false;
+  isOverEdgeNotSelected(x:number,y:number):boolean{
+    return this.model.edges.slice().reverse().filter(n=>!n.selected).find(n=>n.containsPoint(this,x,y)) != null;
   }
 
   selectSourceConnectionPoint(){
