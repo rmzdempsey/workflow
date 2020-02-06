@@ -1,4 +1,5 @@
 import { WorkflowCanvasComponent } from "./workflow-canvas.component";
+import { Ptor } from "protractor";
 
 
 export class UndoEntry{
@@ -95,7 +96,7 @@ export class UndoEntry{
     constructor(public id: number, public x:number, public y: number, public selected: boolean = true ){}
   
     abstract containsPoint(x:number,y:number):boolean
-    abstract isInsideRect(x0:number,y0:number,x1:number,y1:number):boolean
+    abstract isInsideRect(x:number,y:number,w:number,h:number):boolean
     abstract resize(direction:Direction,dx:number,dy:number)
   
     abstract getNx(): number;
@@ -229,6 +230,20 @@ export class UndoEntry{
       else if(direction==Direction.WEST) return this.getWy();
       else return this.getNWy();
     }
+
+    moveBy(canvas: WorkflowCanvasComponent,dx:number,dy:number){
+      this.x = this.x + dx;
+      this.y = this.y + dy;
+
+      canvas.model.edges.filter(e=>e.sourceId==this.id).forEach(e=>{
+        e.junctions[0].x = e.junctions[0].x + dx;
+        e.junctions[0].y = e.junctions[0].y + dy;
+      })
+      canvas.model.edges.filter(e=>e.targetId==this.id).forEach(e=>{
+        e.junctions[e.junctions.length-1].x = e.junctions[e.junctions.length-1].x + dx;
+        e.junctions[e.junctions.length-1].y = e.junctions[e.junctions.length-1].y + dy;
+      })
+    }
   }
   
   export class RectWorkflowNode extends WorkflowNode {
@@ -241,10 +256,8 @@ export class UndoEntry{
       return Utils.rectContainsPoint(this.x,this.y,this.width,this.height,x,y)
     }
   
-    isInsideRect(x0:number,y0:number,x1:number,y1:number):boolean{
-      let x: Array<number> = Utils.orderValues(x0,x1)
-      let y: Array<number> = Utils.orderValues(y0,y1)
-      return this.x >= x[0] && (this.x+this.width)<=x[1] && this.y >= y[0] && (this.y+this.height)<=y[1];
+    isInsideRect(x:number,y:number,w:number,h:number):boolean{
+      return this.x >= x && (this.x+this.width)<=x+w && this.y >= y && (this.y+this.height)<=y+h;
     }
   
     resize(direction:Direction,dx:number,dy:number){
@@ -349,10 +362,8 @@ export class UndoEntry{
       return Utils.cirleContainsPoint(this.x,this.y,this.radius,x,y)
     }
   
-    isInsideRect(x0:number,y0:number,x1:number,y1:number):boolean{
-      let x: Array<number> = Utils.orderValues(x0,x1)
-      let y: Array<number> = Utils.orderValues(y0,y1)
-      return x[0] <= (this.x-this.radius) && x[1] >= (this.x+this.radius) && y[0] <= (this.y-this.radius) && y[1] >= (this.y+this.radius)
+    isInsideRect(x:number,y:number,w:number,h:number):boolean{
+      return x <= (this.x-this.radius) && x+w >= (this.x+this.radius) && y <= (this.y-this.radius) && y+h >= (this.y+this.radius)
     }
   
     resize(direction:Direction,dx:number,dy:number){
@@ -415,12 +426,10 @@ export class UndoEntry{
       return b;
     }
   
-    isInsideRect(x0:number,y0:number,x1:number,y1:number):boolean{
-      let x: Array<number> = Utils.orderValues(x0,x1)
-      let y: Array<number> = Utils.orderValues(y0,y1)
+    isInsideRect(x:number,y:number,w:number,h:number):boolean{
       let X = this.x-(this.width/2)
       let Y = this.y-(this.height/2)
-      return X >= x[0] && (X+this.width)<=x[1] && Y >= y[0] && (Y+this.height)<=y[1];
+      return X >= x && (X+this.width)<=x+w && Y >= y && (Y+this.height)<=y+h;
     }
   
     resize(direction:Direction,dx:number,dy:number){
@@ -472,34 +481,98 @@ export class UndoEntry{
   }
   
   export class WorkflowEdge {
-    constructor(
-      public sourceId:number, 
-      public sourceDirection: Direction,
-      public targetId: number, 
-      public targetDirection: Direction,
-      public selected : boolean = true
-      ){}
-    
-    isInsideRect(canvas:WorkflowCanvasComponent,x:number,y:number,x1:number,y1:number):boolean{
-      let source = canvas.model.nodes.find(n=>n.id == this.sourceId)
+    MIN_CONN_LEN: number = 5;
+
+    public sourceId: number = -1;; 
+    public sourceDirection: Direction;
+    public targetId: number = -1;; 
+    public targetDirection: Direction;
+    public selected : boolean;
+    public junctions: Array<Point> = [];
+
+    constructor( sourceHit:DirectionalHit ){
+      this.sourceId = sourceHit.node.id;
+      this.sourceDirection = sourceHit.direction;
+      let x = sourceHit.node.getX(sourceHit.direction);
+      let y = sourceHit.node.getY(sourceHit.direction);
+      this.junctions.push(new Point(x,y));
+    }
+
+    connect(canvas:WorkflowCanvasComponent,targetHit:DirectionalHit){
+      this.targetId = targetHit.node.id;
+      this.targetDirection = targetHit.direction;
+      this.junctions.pop();
       let target = canvas.model.nodes.find(n=>n.id == this.targetId)
-      let x00 = source.getX(this.sourceDirection);
-      let y00 = source.getY(this.sourceDirection);
-      let x11 = target.getX(this.targetDirection);
-      let y11 = target.getY(this.targetDirection);
-      return Utils.rectContainsPoint(x,y,x1,y1,x00,y00) && Utils.rectContainsPoint(x,y,x1,y1,x11,y11)
+      let x0 = target.getX(this.targetDirection);
+      let y0 = target.getY(this.targetDirection);
+      if(this.targetDirection===Direction.NORTH) this.junctions.push(new Point(x0,y0-MIN_DIMENSION))
+      else if(this.targetDirection===Direction.EAST) this.junctions.push(new Point(x0+MIN_DIMENSION,y0))
+      else if(this.targetDirection===Direction.SOUTH) this.junctions.push(new Point(x0,y0+MIN_DIMENSION))
+      else this.junctions.push(new Point(x0-MIN_DIMENSION,y0))
+    }
+
+    isConnected():boolean{
+      return this.sourceId != -1 && this.targetId != -1;
+    }
+    
+    isInsideRect(canvas:WorkflowCanvasComponent,x:number,y:number,w:number,h:number):boolean{
+      let b = true;
+
+      let source = canvas.model.nodes.find(n=>n.id == this.sourceId)
+      let x0 = source.getX(this.sourceDirection);
+      let y0 = source.getY(this.sourceDirection);
+      if(!Utils.rectContainsPoint(x,y,w,h,x0,y0)) b = false;
+
+      if(b){
+        this.junctions.forEach(j=>{
+          if(!Utils.rectContainsPoint(x,y,w,h,j.x,j.y)){
+            b = false;
+          } 
+        })
+      }
+
+      if(b){
+        let target = canvas.model.nodes.find(n=>n.id == this.targetId)
+        if(target){
+          x0 = target.getX(this.targetDirection);
+          y0 = target.getY(this.targetDirection);
+          if(!Utils.rectContainsPoint(x,y,w,h,x0,y0)) b = false;
+        }
+      }
+
+      return b;
     }
 
     containsPoint(canvas:WorkflowCanvasComponent,x:number,y:number):boolean{
 
-        let source = canvas.model.nodes.find(n=>n.id == this.sourceId)
-        let target = canvas.model.nodes.find(n=>n.id == this.targetId)
-        let x0 = source.getX(this.sourceDirection);
-        let y0 = source.getY(this.sourceDirection);
-        let x1 = target.getX(this.targetDirection);
-        let y1 = target.getY(this.targetDirection);
+      let b = false;
 
-        return this.lineContainsPoint(x0,y0,x1,y1,x,y)
+      this.junctions.forEach((j,i)=>{
+        if( i == 0 ){
+          let source = canvas.model.nodes.find(n=>n.id == this.sourceId)
+          let x0 = source.getX(this.sourceDirection);
+          let y0 = source.getY(this.sourceDirection);
+          if(this.lineContainsPoint(x0,y0,j.x,j.y,x,y)) b = true;
+        }
+        else {
+          let x0 = this.junctions[i-1].x;
+          let y0 = this.junctions[i-1].y;
+          if(this.lineContainsPoint(x0,y0,j.x,j.y,x,y)) b = true;
+        }
+      })
+      let target = canvas.model.nodes.find(n=>n.id == this.sourceId)
+      if(!b ){
+        let target = canvas.model.nodes.find(n=>n.id == this.sourceId)
+        if(target){
+          let x0 = target.getX(this.sourceDirection);
+          let y0 = target.getY(this.sourceDirection);
+          let x1 = this.junctions[this.junctions.length-1].x;
+          let y1 = this.junctions[this.junctions.length-1].y;
+          if(this.lineContainsPoint(x0,y0,x1,y1,x,y)) b = true;
+        }
+      }
+
+      return b;
     }
 
     lineContainsPoint(x0:number,y0:number,x1:number,y1:number,x:number,y:number):boolean{
@@ -511,6 +584,191 @@ export class UndoEntry{
         let d2 = Utils.distanceBetweenPoints(x,y,x1,y1)
 
         return d<2 && d1<=d0 && d2<=d0
+    }
+
+    calculateConnectingPathOnDrag(canvas:WorkflowCanvasComponent,x:number,y:number,dx:number,dy:number ){
+
+      // let pt : Point = this.junctions[this.junctions.length-1];
+      // pt.x = x;
+      // pt.y = y;
+
+      let source = canvas.model.nodes.find(n=>n.id == this.sourceId)
+      let x0 = source.getX(this.sourceDirection);
+      let y0 = source.getY(this.sourceDirection);
+        
+      this.junctions = [];
+
+      if(this.sourceDirection===Direction.NORTH) this.junctions.push(new Point(x0,y0-MIN_DIMENSION))
+      else if(this.sourceDirection===Direction.EAST) this.junctions.push(new Point(x0+MIN_DIMENSION,y0))
+      else if(this.sourceDirection===Direction.SOUTH) this.junctions.push(new Point(x0,y0+MIN_DIMENSION))
+      else this.junctions.push(new Point(x0-MIN_DIMENSION,y0))
+      this.junctions.push(new Point(x,y))
+
+      if( Math.abs(dy) > Math.abs(dx)){
+        if( dy > 0){ // moving coord north - down the page
+          if(this.sourceDirection===Direction.NORTH){
+            // this.junctions.push(new Point(x0,y0-MIN_DIMENSION))
+            // this.junctions.push(new Point(x,y))
+            if( x >= x0 ){
+              if( y >= y0-this.MIN_CONN_LEN){
+                //    ___
+                //   |   |
+                //  src  |
+                //
+              }
+              else{
+                //    ___|
+                //   |
+                //  src  
+                //
+              }
+            }
+            else
+            {
+              if( y >= y0-this.MIN_CONN_LEN){
+                //    ___
+                //   |   |
+                //   |  src
+                //
+              }
+              else{
+                //   |___
+                //       |
+                //      src  
+                //
+              }
+            }
+          }
+          else if(this.sourceDirection===Direction.EAST){
+            if( y >= y0 ){
+              if( x >= x0+this.MIN_CONN_LEN){
+                //   src--|
+                //        |
+                //     
+              }
+              else{
+                //     src--|
+                //    ______|
+                //   | 
+              }
+            }
+            else
+            {
+              if( x >= x0+this.MIN_CONN_LEN){
+                //        
+                //       |
+                //  src--|
+              }
+              else{
+                //  |______
+                //         |
+                //    src--|
+              }
+            }
+          }
+          else if(this.sourceDirection===Direction.SOUTH){
+            if( x >= x0 ){
+              if( y >= y0+this.MIN_CONN_LEN){
+                //   src
+                //    |__
+                //       |
+              }
+              else{
+                //   
+                //  src  |
+                //   |___|
+                //    
+              }
+            }
+            else
+            {
+              if( y >= y0+this.MIN_CONN_LEN){
+                //   
+                //      src
+                //     __|
+                //    |
+              }
+              else{
+                //   |  src
+                //   |___|   
+                //       
+                //
+              }
+            }
+          }
+          else{
+            if( y >= y0 ){
+              if( x >= x0-this.MIN_CONN_LEN){
+                //   |---src
+                //   |_____
+                //         |
+              }
+              else{
+                //      ___src
+                //     |   
+                // 
+              }
+            }
+            else
+            {
+              if( x >= x0-this.MIN_CONN_LEN){
+                //   ______|   
+                //  |
+                //  |___src
+              }
+              else{
+                //   
+                //   |
+                //   |____src
+              }
+            }
+          }
+        }
+        else{ // moving coord south - up the page
+          if(this.sourceDirection===Direction.NORTH){
+
+          }
+          else if(this.sourceDirection===Direction.EAST){
+            
+          }
+          else if(this.sourceDirection===Direction.SOUTH){
+            
+          }
+          else{
+            
+          }
+        }
+      }
+      else{
+        if( dx > 0){ // moving coord east - to page right
+          if(this.sourceDirection===Direction.NORTH){
+
+          }
+          else if(this.sourceDirection===Direction.EAST){
+            
+          }
+          else if(this.sourceDirection===Direction.SOUTH){
+            
+          }
+          else{
+            
+          }
+        }
+        else{ // moving coord west - to page left
+          if(this.sourceDirection===Direction.NORTH){
+
+          }
+          else if(this.sourceDirection===Direction.EAST){
+            
+          }
+          else if(this.sourceDirection===Direction.SOUTH){
+            
+          }
+          else{
+            
+          }
+        }
+      }
     }
 
     getSourceX(canvas:WorkflowCanvasComponent):number{
@@ -529,7 +787,16 @@ export class UndoEntry{
       const target = canvas.model.nodes.find(n=>n.id == this.targetId)
       return target.getY(this.targetDirection); 
     }
+
     isSelected(canvas: WorkflowCanvasComponent):boolean{ 
       return this.selected && !canvas.isGroupSelecting(); 
     }
   }
+
+  export class Point{
+    constructor(public x:number,public y:number){}
+  }
+
+  
+
+  

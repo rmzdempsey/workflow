@@ -2,7 +2,7 @@ import { async, ComponentFixture, TestBed } from '@angular/core/testing';
 
 import { WorkflowDecisionComponent } from './workflow-decision.component';
 
-describe('WorkflowDecisionComponent', () => {
+xdescribe('WorkflowDecisionComponent', () => {
   let component: WorkflowDecisionComponent;
   let fixture: ComponentFixture<WorkflowDecisionComponent>;
 

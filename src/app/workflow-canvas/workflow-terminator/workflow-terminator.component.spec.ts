@@ -2,7 +2,7 @@ import { async, ComponentFixture, TestBed } from '@angular/core/testing';
 
 import { WorkflowTerminatorComponent } from './workflow-terminator.component';
 
-describe('WorkflowTerminatorComponent', () => {
+xdescribe('WorkflowTerminatorComponent', () => {
   let component: WorkflowTerminatorComponent;
   let fixture: ComponentFixture<WorkflowTerminatorComponent>;
 

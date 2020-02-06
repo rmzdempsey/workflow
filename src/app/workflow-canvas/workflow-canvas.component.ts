@@ -30,6 +30,7 @@ export class WorkflowCanvasComponent implements OnInit, AfterViewInit {
   _connectingStartY: number;
   _connectingEndX: number;
   _connectingEndY: number;
+  _connectingEdge : WorkflowEdge;
 
   _isResizingNode: boolean = false;
   _currentResizeHandle: DirectionalHit;
@@ -113,7 +114,8 @@ export class WorkflowCanvasComponent implements OnInit, AfterViewInit {
     const y = e.offsetY;
 
     if(this.isOverSourceConnectionPointOnlyIfNodeNotSelected(x,y)){
-      this.selectSourceConnectionPoint();
+      //this.selectSourceConnectionPoint();
+      this.startConnecting(x,y)
     }
     else if( this.isOverNodeResizePointOnlyIfNodeSelected(x,y) ){
       this.startResizeNode(x,y);
@@ -228,7 +230,7 @@ export class WorkflowCanvasComponent implements OnInit, AfterViewInit {
       this.updateGroupSelect(x,y)
     }
     else if( this.isConnecting() ){
-      this.updateConnection(x,y)
+      this.updateConnection(x,y,e.movementX,e.movementY)
       if(this.isOverTargetConnectionPoint(x,y)){
         // should render target handle
       }
@@ -343,32 +345,42 @@ export class WorkflowCanvasComponent implements OnInit, AfterViewInit {
     return this.model.edges.slice().reverse().filter(n=>!n.selected).find(n=>n.containsPoint(this,x,y)) != null;
   }
 
-  selectSourceConnectionPoint(){
-    console.log('selecting stc connection pt')
+  // selectSourceConnectionPoint(){
+  //   console.log('selecting stc connection pt')
+  //   this.model.nodes.forEach(n=>n.selected=false)
+  //   this.model.edges.forEach(e=>e.selected=false)
+  //   this._isConnecting = true;
+  //   this._connectingStartX = this._currentSourceConnectionHover.getHandleX();
+  //   this._connectingStartY = this._currentSourceConnectionHover.getHandleY();
+  //   this._connectingEndX = this._connectingStartX;
+  //   this._connectingEndY = this._connectingStartY;
+  // }
+  startConnecting(x:number,y:number){
     this.model.nodes.forEach(n=>n.selected=false)
     this.model.edges.forEach(e=>e.selected=false)
     this._isConnecting = true;
-    this._connectingStartX = this._currentSourceConnectionHover.getHandleX();
-    this._connectingStartY = this._currentSourceConnectionHover.getHandleY();
-    this._connectingEndX = this._connectingStartX;
-    this._connectingEndY = this._connectingStartY;
+    this._connectingEdge = new WorkflowEdge(this._currentSourceConnectionHover)
+    this._connectingEdge.selected=true;
+    this.model.edges.push(this._connectingEdge);
   }
   isConnecting():boolean{
     return this._isConnecting;
   }
-  updateConnection(x:number,y:number){
-    this._connectingEndX = x;
-    this._connectingEndY = y;
+  updateConnection(x:number,y:number,dx:number,dy:number){
+    this._connectingEdge.calculateConnectingPathOnDrag(this,x,y,dx,dy)
+    // this._connectingEndX = x;
+    // this._connectingEndY = y;
   }
   stopConnecting(){
     this._isConnecting = false;
-    if( this._currentSourceConnectionHover != null && this._currentSourceConnectionHover ){
-      this.model.edges.push(new WorkflowEdge(
-        this._currentSourceConnectionHover.node.id,
-        this._currentSourceConnectionHover.direction,
-        this._currentTargetConnectionHover.node.id,
-        this._currentTargetConnectionHover.direction
-      ))
+    if( this._currentSourceConnectionHover != null && this._currentTargetConnectionHover ){
+      this._connectingEdge.connect(this,this._currentTargetConnectionHover);
+      // this.model.edges.push(new WorkflowEdge(
+      //   this._currentSourceConnectionHover.node.id,
+      //   this._currentSourceConnectionHover.direction,
+      //   this._currentTargetConnectionHover.node.id,
+      //   this._currentTargetConnectionHover.direction
+      // ))
     }
     this._currentSourceConnectionHover = null;
     this._currentTargetConnectionHover = null;
@@ -404,12 +416,12 @@ export class WorkflowCanvasComponent implements OnInit, AfterViewInit {
     return this._isGroupSelecting;
   }
   stopGroupSelect(){
-    console.log('stopping group select')
+    console.log('stopping group select', this._groupSelectStartX, this._groupSelectStartY, this._groupSelectEndX, this._groupSelectEndY )
     this._isGroupSelecting = false;
-    this.model.nodes.filter(n=> n.isInsideRect(this._groupSelectStartX, this._groupSelectStartY, this._groupSelectEndX,this._groupSelectEndY))
-        .forEach(n=>n.selected=true)
-      this.model.edges.filter(ee=> ee.isInsideRect(this,this._groupSelectStartX, this._groupSelectStartY, this._groupSelectEndX,this._groupSelectEndY))
-        .forEach(n=>n.selected=true)
+    const x : Array<number> = Utils.orderValues(this._groupSelectStartX,this._groupSelectEndX)
+    const y : Array<number> = Utils.orderValues(this._groupSelectStartY,this._groupSelectEndY)
+    this.model.nodes.filter(n=> n.isInsideRect(x[0],y[0],x[1]-x[0], y[1]-y[0])).forEach(n=>n.selected=true)
+    this.model.edges.filter(ee=>ee.isInsideRect(this,x[0],y[0],x[1]-x[0], y[1]-y[0])).forEach(n=>n.selected=true)
   }
   updateGroupSelect(x:number,y:number){
     this._groupSelectEndX = x;
@@ -432,10 +444,11 @@ export class WorkflowCanvasComponent implements OnInit, AfterViewInit {
     let selected : Array<WorkflowNode> = this.model.nodes.filter(n=>n.selected);
     if(selected.length>0){
       this._isDragging = true;
-      selected.forEach(n=>{
-        n.x=n.x+dx
-        n.y=n.y+dy
-      })
+      selected.forEach(n=>n.moveBy(this,dx,dy))
+        //{
+        // n.x=n.x+dx
+        // n.y=n.y+dy
+      //})
     }
   }
   isDragging():boolean{

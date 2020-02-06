@@ -2,7 +2,7 @@ import { async, ComponentFixture, TestBed } from '@angular/core/testing';
 
 import { WorkflowTaskComponent } from './workflow-task.component';
 
-describe('WorkflowTaskComponent', () => {
+xdescribe('WorkflowTaskComponent', () => {
   let component: WorkflowTaskComponent;
   let fixture: ComponentFixture<WorkflowTaskComponent>;
 

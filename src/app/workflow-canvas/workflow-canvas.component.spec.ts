@@ -2,7 +2,8 @@ import { async, ComponentFixture, TestBed } from '@angular/core/testing';
 
 import { WorkflowCanvasComponent } from './workflow-canvas.component';
 import { WorkflowTaskComponent } from './workflow-task/workflow-task.component';
-import { RectWorkflowNode, WorkflowEdge, Direction, Utils } from './workflow.model';
+import { RectWorkflowNode, WorkflowEdge, Direction, Utils, DirectionalHit } from './workflow.model';
+import { Dir } from '@angular/cdk/bidi';
 
 describe('Utils', () => {
   it('distance on vert line to be less than 1', () => {
@@ -21,7 +22,7 @@ describe('Utils', () => {
   });
 });
 
-fdescribe('WorkflowCanvasComponent', () => {
+describe('WorkflowCanvasComponent', () => {
   let component: WorkflowCanvasComponent;
   
   beforeEach(()=>{
@@ -99,6 +100,21 @@ fdescribe('WorkflowCanvasComponent', () => {
       it('isOverNodeResizePointOnlyIfNodeSelected should detect miss over connection point just west', () => {
         expect(component.isOverNodeResizePointOnlyIfNodeSelected(148,100)).toBeFalsy();
       });
+      describe('connection routing tests', () => {
+        let connection : WorkflowEdge;
+        beforeEach(() => {
+          connection = new WorkflowEdge(new DirectionalHit(Direction.NORTH,component.model.nodes[0],150,100));
+        });
+        describe('north connector', () => {
+          xit('going up page above handle', () => {
+            connection.calculateConnectingPathOnDrag(component,150,50,0,-20)
+            expect(connection.isConnected()).toBeFalsy();
+            expect(connection.junctions.length).toBe(1);
+            expect(connection.junctions[0].x).toBe(150);
+            expect(connection.junctions[0].y).toBe(50);
+          });
+        })
+      })
     })
 
     describe('all selected', () => {
@@ -222,7 +238,11 @@ fdescribe('WorkflowCanvasComponent', () => {
         100,
       )
       component.addNode( rect2 )
-      component.model.edges.push(new WorkflowEdge(rect1.id,Direction.EAST,rect2.id,Direction.WEST))
+      let sourceHit : DirectionalHit = new DirectionalHit(Direction.EAST,rect1,200,150);
+      let targetHit : DirectionalHit = new DirectionalHit(Direction.WEST,rect2,300,150);
+      let edge : WorkflowEdge = new WorkflowEdge(sourceHit)
+      component.model.edges.push(edge);
+      edge.connect(component,targetHit);
     });
 
     describe('nothing selected', () => {
@@ -271,7 +291,11 @@ fdescribe('WorkflowCanvasComponent', () => {
         100,
       )
       component.addNode( rect2 )
-      component.model.edges.push(new WorkflowEdge(rect1.id,Direction.SOUTH,rect2.id,Direction.NORTH))
+      let sourceHit : DirectionalHit = new DirectionalHit(Direction.SOUTH,rect1,150,200);
+      let targetHit : DirectionalHit = new DirectionalHit(Direction.NORTH,rect2,150,300);
+      let edge : WorkflowEdge = new WorkflowEdge(sourceHit)
+      component.model.edges.push(edge);
+      edge.connect(component,targetHit);
     });
 
     describe('nothing selected', () => {
